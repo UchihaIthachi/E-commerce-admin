@@ -1,0 +1,204 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  fname         String?
+  lname         String?
+  country       String?
+  phone_1       String?
+  phone_2       String?
+  dob           DateTime?
+  gender        String?
+  accounts      Account[]
+  sessions      Session[]
+  addresses     Address[]
+
+  Cart   Cart?
+  orders Order[]
+}
+
+model Address {
+  id          String     @id @default(cuid())
+  fname       String
+  lname       String
+  country     String
+  phone       String
+  line_1      String
+  line_2      String
+  primary     Boolean
+  city        String
+  postal_code String
+  userId      String?
+  User        User?      @relation(fields: [userId], references: [id])
+  deliveries  Delivery[]
+  pickups     Pickup[]
+
+  @@index([userId])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String?    @unique
+  User      User?      @relation(fields: [userId], references: [id])
+  cartItems CartItem[]
+
+  @@index([userId])
+}
+
+model CartItem {
+  id        String  @id @default(cuid())
+  cartId    String?
+  cart      Cart?   @relation(fields: [cartId], references: [id])
+  sanityId  String
+  thumbnail String
+  color     String
+  size      String
+  count     Int
+  name      String
+  price     Int
+  discount  Int     @default(0)
+  orderId   String?
+  order     Order?  @relation(fields: [orderId], references: [id])
+
+  @@unique([cartId, sanityId, color, size])
+  @@index([cartId])
+  @@index([orderId])
+}
+
+enum PAYMENT_STATUS {
+  PENDING
+  PAID
+}
+
+enum DELIVERY_STATUS {
+  IDLE
+  PROCESSING
+  DISPATCHED
+  DELIVERED
+}
+
+enum ORDER_STATUS {
+  PENDING
+  PROCESSING
+  FULFILLED
+  REJECTED
+}
+
+enum SHIPPING_METHOD {
+  DELIVERY
+  PICKUP
+}
+
+enum PAYMENT_METHOD {
+  CREDIT_CARD
+  COD
+}
+
+model Delivery {
+  id              String  @id @default(cuid())
+  email           String
+  phone           String
+  addressId       String
+  address         Address @relation(fields: [addressId], references: [id])
+  service         String?
+  cost            Int     @default(350)
+  calculated_cost Int?    @default(0)
+  message         String?
+  gift            Boolean @default(false)
+  wrapped         Boolean @default(false)
+  boxed           Boolean @default(false)
+  order           Order?
+
+  @@index([addressId])
+}
+
+model Pickup {
+  id        String  @id @default(cuid())
+  store     String
+  addressId String
+  address   Address @relation(fields: [addressId], references: [id])
+  email     String
+  phone     String
+  gift      Boolean @default(false)
+  wrapped   Boolean @default(false)
+  boxed     Boolean @default(false)
+  message   String?
+  order     Order?
+
+  @@index([addressId])
+}
+
+model Order {
+  id              String           @id @default(cuid())
+  userId          String?
+  user            User?            @relation(fields: [userId], references: [id])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deliveryId      String?          @unique
+  pickupId        String?          @unique
+  delivery        Delivery?        @relation(fields: [deliveryId], references: [id])
+  pickup          Pickup?          @relation(fields: [pickupId], references: [id])
+  orderItems      CartItem[]
+  payment_status  PAYMENT_STATUS
+  payment_method  PAYMENT_METHOD?
+  shipping_method SHIPPING_METHOD?
+  delivery_status DELIVERY_STATUS?
+  order_status    ORDER_STATUS
+
+  @@index([userId])
+  @@index([pickupId])
+  @@index([deliveryId])
+}
