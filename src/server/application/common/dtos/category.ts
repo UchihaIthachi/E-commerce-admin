@@ -2,7 +2,9 @@ import { z } from "zod";
 
 export const GetCategoryDTO = z
   .object({
-    _id: z.string(), name: z.string(), slug: z.string(),
+    _id: z.string(),
+    name: z.string(),
+    slug: z.string(),
     seo: z.object({
       title: z.string().max(60).optional(),
       description: z.string().max(160).optional(),
@@ -13,20 +15,23 @@ export const GetCategoryDTO = z
         width: z.number().optional(),
         height: z.number().optional(),
         alt: z.string().optional(),
-      })
+      }),
     }),
   })
   .strict();
 
-  export const GetCategoriesDTO = z
+export const GetCategoriesDTO = z
   .object({
-    _id: z.string(), name: z.string(), slug: z.string(),
+    _id: z.string(),
+    name: z.string(),
+    slug: z.union([z.string(), z.object({ current: z.string() })]), // Handle both string and object
   })
   .strict();
 
 export const AddCategoryDTO = z
   .object({
-    name: z.string(), slug: z.string(),
+    name: z.string(),
+    slug: z.string(),
     seo: z.object({
       title: z.string().max(60).optional(),
       description: z.string().max(160).optional(),
@@ -37,14 +42,15 @@ export const AddCategoryDTO = z
         width: z.number().optional(),
         height: z.number().optional(),
         alt: z.string().optional(),
-      })
+      }),
     }),
   })
   .strict();
 
 export const EditCategoryDTO = z
   .object({
-    name: z.string(), slug: z.string(),
+    name: z.string(),
+    slug: z.string(),
     seo: z.object({
       title: z.string().max(60).optional(),
       description: z.string().max(160).optional(),
@@ -55,15 +61,16 @@ export const EditCategoryDTO = z
         width: z.number().optional(),
         height: z.number().optional(),
         alt: z.string().optional(),
-      })
+      }),
     }),
   })
   .strict();
 
-  export const UpdateCategoryDTO = z
+export const UpdateCategoryDTO = z
   .object({
-    _id: z.string(), 
-    name: z.string(), slug: z.string(),
+    _id: z.string(),
+    name: z.string(),
+    slug: z.string(),
     seo: z.object({
       title: z.string().max(60).optional(),
       description: z.string().max(160).optional(),
@@ -74,7 +81,7 @@ export const EditCategoryDTO = z
         width: z.number().optional(),
         height: z.number().optional(),
         alt: z.string().optional(),
-      })
+      }),
     }),
   })
   .strict();

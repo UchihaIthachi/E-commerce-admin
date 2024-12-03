@@ -1,33 +1,41 @@
-import { GetCategoryDTO, GetCategoriesDTO } from "@/server/application/common/dtos/category";
+import {
+  GetCategoryDTO,
+  GetCategoriesDTO,
+} from "@/server/application/common/dtos/category";
 import { createId } from "@paralleldrive/cuid2";
 import groq from "groq";
 import { dynamicClient } from "../../clients/sanity";
 import ValidationError from "@/server/application/common/errors/validation-error";
-import {AddCategoryDTO, UpdateCategoryDTO} from "@/server/application/common/dtos/category";
-import { z } from 'zod'
+import {
+  AddCategoryDTO,
+  UpdateCategoryDTO,
+} from "@/server/application/common/dtos/category";
+import { z } from "zod";
 
 // type CreateCategoryParams = {
 //   name: string;
 //   slug: string;
 // };
-type CreateCategoryParams= z.infer<typeof AddCategoryDTO>;
-
+type CreateCategoryParams = z.infer<typeof AddCategoryDTO>;
 
 export const createCategory = async (params: CreateCategoryParams) => {
-  const { name, slug, seo} = params;
+  const { name, slug, seo } = params;
   const doc = {
     _type: "category",
     _id: createId(),
     name,
     slug,
-    seo: seo
+    seo: seo,
   };
   await dynamicClient.create(doc);
 };
 
 export const getCategories = async () => {
   const query = groq`*[_type == 'category']{_id,name,slug}`;
-  const data = GetCategoriesDTO.array().parse(await dynamicClient.fetch(query));
+  const rawData = await dynamicClient.fetch(query);
+  console.log("Raw Data:\n", rawData);
+  const data = GetCategoriesDTO.array().parse(rawData);
+  console.log("Data :\n", data);
   return data;
 };
 
@@ -43,10 +51,10 @@ export const findCategoryBySlug = async (slug: string) => {
   return data.length > 0;
 };
 
-type UpdateCategoryParams= z.infer<typeof UpdateCategoryDTO>;
+type UpdateCategoryParams = z.infer<typeof UpdateCategoryDTO>;
 
 export const updateCategory = async (params: UpdateCategoryParams) => {
-  const { _id ,name, slug, seo} = params;
+  const { _id, name, slug, seo } = params;
   await dynamicClient.patch(_id).set({ name, slug, seo: seo }).commit();
 };
 
