@@ -33,9 +33,9 @@ export const createCategory = async (params: CreateCategoryParams) => {
 export const getCategories = async () => {
   const query = groq`*[_type == 'category']{_id,name,slug}`;
   const rawData = await dynamicClient.fetch(query);
-  console.log("Raw Data:\n", rawData);
+  // console.log("Raw Data:\n", rawData);
   const data = GetCategoriesDTO.array().parse(rawData);
-  console.log("Data :\n", data);
+  // console.log("Data :\n", data);
   return data;
 };
 

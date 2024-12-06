@@ -95,6 +95,7 @@ The project employs several key architecture patterns to ensure scalability, mai
 
 - **Layered Architecture:**  
   The system follows a **Layered Architecture** pattern, separating the application into distinct layers for better manageability and scalability:
+
   - **Frontend Layer:**  
     This layer is responsible for the user interface and interaction. Built using **Next.js** and integrated with **ShadCN**, it handles user input, rendering, and communicating with the back-end.
   - **Business Logic Layer:**  
@@ -103,6 +104,9 @@ The project employs several key architecture patterns to ensure scalability, mai
     The **Data Access Layer** abstracts interactions with the database, utilizing **Prisma ORM** for seamless communication with the **PostgreSQL** database via **Supabase**. This layer is responsible for querying, inserting, and managing data records like **Delivery**, **Pickup**, **Orders**, **Cart**, and **User**.
   - **Database Layer:**  
     The **Database Layer** contains the actual data storage, in this case, using **PostgreSQL** (via **Supabase**). It manages persistent storage for user data, orders, sessions, and more.
+
+- **Headless CMS Pattern:**  
+  The system integrates **Sanity CMS** as a **Headless CMS**, enabling content management and delivery as structured data through APIs. This pattern decouples content management from the presentation layer, offering flexibility and scalability.
 
 ---
 
