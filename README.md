@@ -76,10 +76,6 @@ The integration of **Sanity** ensures that product information, user-generated c
 
 ---
 
-Here’s the updated **Architecture Patterns** section with the addition of the **Layered Architecture**:
-
----
-
 ### **Architecture Patterns**
 
 The project employs several key architecture patterns to ensure scalability, maintainability, and efficiency:
