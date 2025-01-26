@@ -3,6 +3,7 @@ import { createId } from "@paralleldrive/cuid2";
 import groq from "groq";
 import { dynamicClient } from "../../clients/sanity";
 import ValidationError from "@/server/application/common/errors/validation-error";
+import { graphqlClient } from "@/server/infrastructure/clients/graphqlClient"; // Updated client
 
 type CreateSizeParams = {
     name: string;
@@ -12,17 +13,60 @@ type UpdateSizeParams = {
     name: string;
   };
 
-export const getSizes = async () => {
-    const query = groq`*[_type == 'size']{_id,name}`;
-    const data = GetSizeDTO.array().parse(await dynamicClient.fetch(query));
-    return data;
+  export const getSizes = async () => {
+    const query = `
+      query {
+        allSize {
+          _id
+          name
+        }
+      }
+    `;
+  
+    try {
+      const response = await graphqlClient.request(query);
+  
+      if (!response.allSize || response.allSize.length === 0) {
+        console.warn("No sizes found.");
+        return [];
+      }
+  
+      // Validate the response using Zod schema
+      const data = GetSizeDTO.array().parse(response.allSize);
+      return data;
+    } catch (error) {
+      console.error("Error fetching sizes:", error);
+      throw new Error("Failed to fetch sizes");
+    }
   };
-
-export const getSize = async (_id: string) => {
-    const query = groq`*[_type == 'size' && _id=="${_id}"]{_id,name}`;
-    const data = GetSizeDTO.parse((await dynamicClient.fetch(query))[0]);
-    return data;
+  
+  export const getSize = async (_id: string) => {
+    const query = `
+      query($id: ID!) {
+        Size(id: $id) {
+          _id
+          name
+        }
+      }
+    `;
+  
+    try {
+      const variables = { id: _id };
+      const response = await graphqlClient.request(query, variables);
+  
+      if (!response.Size) {
+        throw new Error(`Size with ID "${_id}" not found.`);
+      }
+  
+      // Validate the response using Zod schema
+      const data = GetSizeDTO.parse(response.Size);
+      return data;
+    } catch (error) {
+      console.error(`Error fetching size with ID "${_id}":`, error);
+      throw new Error("Failed to fetch size");
+    }
   };
+  
   
   
   

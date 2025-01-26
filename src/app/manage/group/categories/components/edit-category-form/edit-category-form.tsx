@@ -44,14 +44,19 @@ const EditCategoryFormSchema = z.object({
 function EditCategoryForm({
   category,
 }: {
-  category: z.infer<typeof GetCategoryDTO>;
+  category: z.infer<typeof GetCategoryDTO> | undefined;
 }) {
+  if (!category) {
+    return <div>Loading category data...</div>;
+  }
+  console.log("Catagory : ",category);
+
   const EditCategoryForm = useForm<z.infer<typeof EditCategoryFormSchema>>({
     resolver: zodResolver(EditCategoryFormSchema),
     defaultValues: {
       name: category.name,
       slug: category.slug,
-      seo: category.seo
+      seo: category.seo,
     },
   });
 

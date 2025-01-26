@@ -3,6 +3,7 @@ import { createId } from "@paralleldrive/cuid2";
 import groq from "groq";
 import { dynamicClient } from "../../clients/sanity";
 import ValidationError from "@/server/application/common/errors/validation-error";
+import { graphqlClient } from "@/server/infrastructure/clients/graphqlClient"; // Updated client
 
 type CreateColorParams = {
     name: string;
@@ -14,16 +15,60 @@ type UpdateColorParams = {
     hex: string;
   };
 
-export const getColors = async () => {
-    const query = groq`*[_type == 'color']{_id,name,hex}`;
-    const data = GetColorDTO.array().parse(await dynamicClient.fetch(query));
-    return data;
+  export const getColors = async () => {
+    const query = `
+      query {
+        allColor {
+          _id
+          name
+          hex
+        }
+      }
+    `;
+  
+    try {
+      const response = await graphqlClient.request(query);
+  
+      if (!response.allColor || response.allColor.length === 0) {
+        console.warn("No colors found.");
+        return [];
+      }
+  
+      // Validate the response using Zod schema
+      const data = GetColorDTO.array().parse(response.allColor);
+      return data;
+    } catch (error) {
+      console.error("Error fetching colors:", error);
+      throw new Error("Failed to fetch colors");
+    }
   };
-
-export const getColor = async (_id: string) => {
-    const query = groq`*[_type == 'color' && _id=="${_id}"]{_id,name,hex}`;
-    const data = GetColorDTO.parse((await dynamicClient.fetch(query))[0]);
-    return data;
+  
+  export const getColor = async (_id: string) => {
+    const query = `
+      query($id: ID!) {
+        Color(id: $id) {
+          _id
+          name
+          hex
+        }
+      }
+    `;
+  
+    try {
+      const variables = { id: _id };
+      const response = await graphqlClient.request(query, variables);
+  
+      if (!response.Color) {
+        throw new Error(`Color with ID "${_id}" not found.`);
+      }
+  
+      // Validate the response using Zod schema
+      const data = GetColorDTO.parse(response.Color);
+      return data;
+    } catch (error) {
+      console.error(`Error fetching color with ID "${_id}":`, error);
+      throw new Error("Failed to fetch color");
+    }
   };
   
   

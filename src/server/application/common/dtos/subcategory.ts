@@ -16,8 +16,8 @@ export const GetSubCategoryDTO = z
         width: z.number().optional(),
         height: z.number().optional(),
         alt: z.string().optional(),
-      })
-    }),
+      }).optional()
+    }).optional(),
   })
   .strict();
 

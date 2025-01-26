@@ -4,7 +4,7 @@ export const GetCategoryDTO = z
   .object({
     _id: z.string(),
     name: z.string(),
-    slug: z.string(),
+    slug: z.string().nullable(),
     seo: z.object({
       title: z.string().max(60).optional(),
       description: z.string().max(160).optional(),
@@ -15,8 +15,8 @@ export const GetCategoryDTO = z
         width: z.number().optional(),
         height: z.number().optional(),
         alt: z.string().optional(),
-      }),
-    }),
+      }).optional(),
+    }).optional(),
   })
   .strict();
 

@@ -11,6 +11,8 @@ import {
   UpdateCategoryDTO,
 } from "@/server/application/common/dtos/category";
 import { z } from "zod";
+import { graphqlClient } from "@/server/infrastructure/clients/graphqlClient"; // Updated client
+
 
 // type CreateCategoryParams = {
 //   name: string;
@@ -31,18 +33,79 @@ export const createCategory = async (params: CreateCategoryParams) => {
 };
 
 export const getCategories = async () => {
-  const query = groq`*[_type == 'category']{_id,name,slug}`;
-  const rawData = await dynamicClient.fetch(query);
-  // console.log("Raw Data:\n", rawData);
-  const data = GetCategoriesDTO.array().parse(rawData);
-  // console.log("Data :\n", data);
-  return data;
+  const query = `
+    query {
+      allCategory {
+        _id
+        name
+        slug {
+          current
+        }
+      }
+    }
+  `;
+
+  try {
+    const response = await graphqlClient.request(query);
+
+    if (!response.allCategory || response.allCategory.length === 0) {
+      console.warn("No categories found.");
+      return [];
+    }
+
+    // Transform slug to a flat string
+    const transformedData = response.allCategory.map((category: any) => ({
+      ...category,
+      slug: category.slug?.current || null,
+    }));
+
+    // Validate with Zod schema
+    const data = GetCategoriesDTO.array().parse(transformedData);
+    return data;
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    throw new Error("Failed to fetch categories");
+  }
 };
 
 export const getCategory = async (_id: string) => {
-  const query = groq`*[_type == 'category' && _id=="${_id}"]{_id,name,slug, seo}`;
-  const data = GetCategoryDTO.parse((await dynamicClient.fetch(query))[0]);
-  return data;
+  const query = `
+    query($id: ID!) {
+      Category(id: $id) {
+        _id
+        name
+        slug {
+          current
+        }
+        seo {
+          title
+          description
+        }
+      }
+    }
+  `;
+
+  try {
+    const variables = { id: _id };
+    const response = await graphqlClient.request(query, variables);
+
+    if (!response.Category) {
+      throw new Error(`Category with ID "${_id}" not found.`);
+    }
+
+    // Transform slug to a flat string
+    const transformedData = {
+      ...response.Category,
+      slug: response.Category.slug?.current || null,
+    };
+
+    // Validate with Zod schema
+    const data = GetCategoryDTO.parse(transformedData);
+    return data;
+  } catch (error) {
+    console.error(`Error fetching category with ID "${_id}":`, error);
+    throw new Error("Failed to fetch category");
+  }
 };
 
 export const findCategoryBySlug = async (slug: string) => {

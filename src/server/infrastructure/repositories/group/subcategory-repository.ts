@@ -4,7 +4,8 @@ import { dynamicClient } from "../../clients/sanity";
 import { GetSubCategoryDTO, GetSubCategoriesDTO} from "@/server/application/common/dtos/subcategory";
 import ValidationError from "@/server/application/common/errors/validation-error";
 import {AddSubCategoryDTO, UpdateSubCategoryDTO} from "@/server/application/common/dtos/subcategory";
-import { z } from 'zod'
+import { z } from 'zod';
+import { graphqlClient } from "@/server/infrastructure/clients/graphqlClient"; // Updated client
 
 // type CreateSubCategoryParams = {
 //   name: string;
@@ -31,10 +32,91 @@ export const createSubCategory = async (params: CreateSubCategoryParams) => {
 };
 
 export const getSubCategories = async () => {
-  const query = groq`*[_type == 'subcategory']{_id,name,slug,"category": category->{_id,name}}`;
-  const data = GetSubCategoriesDTO.array().parse(await dynamicClient.fetch(query));
-  return data;
+  const query = `
+    query {
+      allSubcategory { 
+        _id
+        name
+        slug {
+          current
+        }
+        category {
+          _id
+          name
+        }
+      }
+    }
+  `;
+
+  try {
+    const response = await graphqlClient.request(query);
+
+    if (!response.allSubcategory || response.allSubcategory.length === 0) {
+      console.warn("No subcategories found.");
+      return [];
+    }
+
+    // Transform slug to a flat string
+    const transformedData = response.allSubcategory.map((item: any) => ({
+      ...item,
+      slug: item.slug?.current || "", // Ensure slug is always a string
+    }));
+
+    // Validate with Zod schema
+    const data = GetSubCategoriesDTO.array().parse(transformedData);
+    return data;
+  } catch (error) {
+    console.error("Error fetching subcategories:", error);
+    throw new Error("Failed to fetch subcategories");
+  }
 };
+
+export const getSubCategory = async (_id: string) => {
+  const query = `
+    query($id: ID!) {
+      Subcategory(id: $id) { 
+        _id
+        name
+        slug {
+          current
+        }
+        category {
+          _id
+          name
+        }
+        seo {
+          title
+          description
+        }
+      }
+    }
+  `;
+
+  try {
+    const variables = { id: _id };
+    const response = await graphqlClient.request(query, variables);
+
+    if (!response.Subcategory) {
+      throw new Error(`Subcategory with ID "${_id}" not found`);
+    }
+
+    // Transform slug to a flat string
+    const transformedData = {
+      ...response.Subcategory,
+      slug: response.Subcategory.slug?.current || "", // Ensure slug is always a string
+    };
+
+    // Validate with Zod schema
+    const data = GetSubCategoryDTO.parse(transformedData);
+    return data;
+  } catch (error) {
+    console.error(`Error fetching subcategory with ID "${_id}":`, error);
+    throw new Error("Failed to fetch subcategory");
+  }
+};
+
+
+
 
 export const findSubCategoryBySlug = async (slug: string) => {
   const query = groq`*[_type == 'subcategory' && slug=="${slug}"]._id`;
@@ -52,11 +134,8 @@ export const deleteSubCategory = async (_id: string) => {
   }
 };
 
-export const getSubCategory = async (_id: string) => {
-  const query = groq`*[_type == 'subcategory' && _id=="${_id}"]{_id,name,slug,"category": category->{_id,name},seo}`;
-  const data = GetSubCategoryDTO.parse((await dynamicClient.fetch(query))[0]);
-  return data;
-};
+
+
 
 // type UpdateSubCategoryParams = {
 //   _id: string;
