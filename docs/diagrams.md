@@ -9,41 +9,46 @@ This diagram outlines the major components of the E-Commerce platform and their 
 ```mermaid
 graph LR
     %% Users
-    UserAdmin["Admin User"]
-    UserCustomer["Customer"]
+    UserAdmin[Admin User]
+    UserCustomer[Customer]
 
     %% Frontend Systems
-    subgraph Next_js_Admin_Panel
-        AdminUI["Admin UI Components"]
-        AdminAPICalls["API Calls / tRPC / Server Actions"]
+    subgraph Next_js_Admin_Panel [Next.js Admin Panel]
+        direction LR
+        AdminUI[Admin UI Components]
+        AdminAPICalls[API Calls / tRPC / Server Actions]
     end
 
-    subgraph Next_js_Customer_Website
-        CustomerUI["Customer UI Components"]
-        CustomerAPICalls["API Calls / GraphQL Queries"]
+    subgraph Next_js_Customer_Website [Next.js Customer Website]
+        direction LR
+        CustomerUI[Customer UI Components]
+        CustomerAPICalls[API Calls / GraphQL Queries]
     end
 
     %% Backend Services & Data Stores
-    subgraph Next_js_Backend
-        APIRoutes["API Routes / tRPC Router"]
-        AppLogic["Application Logic (Command/Query Handlers, Repositories)"]
+    subgraph Next_js_Backend [Next.js Backend Logic]
+        direction TD
+        APIRoutes[API Routes / tRPC Router]
+        AppLogic[Application Logic (Command/Query Handlers, Repositories)]
     end
 
-    subgraph Sanity_CMS
-        SanityStudio["Sanity Studio (Content Input)"]
-        SanityAPI["Sanity Document & GraphQL API"]
-        SanityData["Product Catalog, Categories, Banners, Content"]
-        SanityCDN["Sanity CDN (for static assets/images)"]
+    subgraph Sanity_CMS [Sanity Headless CMS]
+        direction TD
+        SanityStudio[Sanity Studio (Content Input)]
+        SanityAPI[Sanity Document & GraphQL API]
+        SanityData[Product Catalog, Categories, Banners, Content]
+        SanityCDN[Sanity CDN (for static assets/images)]
     end
 
-    subgraph Supabase_PostgreSQL
-        PrismaClient["Prisma ORM Client"]
-        SupabaseDB["User Accounts, Orders, Carts, Sessions, Delivery Info"]
+    subgraph Supabase_PostgreSQL [Supabase - PostgreSQL Database]
+        direction TD
+        PrismaClient[Prisma ORM Client]
+        SupabaseDB[User Accounts, Orders, Carts, Sessions, Delivery Info]
     end
 
-    subgraph Third_Party_Services
-        ClerkAuth["Clerk.dev (Authentication)"]
-        CloudflareCDN["Cloudflare CDN (Static Assets)"]
+    subgraph Third_Party_Services [Third-Party Services]
+        ClerkAuth[Clerk.dev (Authentication)]
+        CloudflareCDN[Cloudflare CDN (Static Assets)]
     end
 
     %% Connections
@@ -54,7 +59,7 @@ graph LR
     UserCustomer --> CustomerUI
     CustomerUI --> CustomerAPICalls
     CustomerAPICalls --> APIRoutes
-    CustomerAPICalls --> SanityAPI
+    CustomerAPICalls --> SanityAPI  // Direct reads for products/content
 
     APIRoutes --> AppLogic
     AppLogic --> SanityAPI
@@ -68,10 +73,9 @@ graph LR
 
     %% Authentication and CDN
     AdminUI --> ClerkAuth
-    CustomerUI --> ClerkAuth
+    CustomerUI --> ClerkAuth // Assuming Clerk is also for customer auth, if not, adjust
     Next_js_Admin_Panel --> CloudflareCDN
     Next_js_Customer_Website --> CloudflareCDN
-
 ```
 
 **Explanation of Components and Flows (System Architecture):**
