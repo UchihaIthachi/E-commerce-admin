@@ -26,6 +26,12 @@ The **E-Commerce** is a dynamic web application that facilitates both product pu
 
 The system architecture is composed of core components: front-end, back-end, identity management, and database, all interacting seamlessly to support user transactions and data handling. The integration of **Next.js** for both server-side rendering and static site generation provides the flexibility and speed required for a modern web platform.
 
+#### **Visual System Overview (Diagram Descriptions)**
+
+For a visual understanding of the system, textual descriptions that can be used to generate diagrams (e.g., using Mermaid.js) are available. These provide insights into the overall system architecture and the conceptual database structure:
+
+*   **[System Diagram Descriptions](./docs/diagrams.md)**
+
 #### **Core Components**
 
 1. **Admin System** (Next.js)

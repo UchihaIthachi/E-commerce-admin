@@ -2,6 +2,8 @@
 
 This document provides a detailed breakdown of suggested enhancements for the e-commerce platform, based on the code analysis performed. These suggestions aim to leverage modern web technologies, improve developer experience, and optimize performance and maintainability, with specific considerations for both the Admin Panel and the Customer Website.
 
+**A Note on Categorization:** While the enhancements below are categorized for clarity, it's important to note that some underlying principles or technologies can offer benefits across both the Admin Panel and the Customer Website. For instance, type-safe APIs or consistent data access strategies are universally beneficial. Specific notes on such overlaps are included where relevant.
+
 ## Admin Panel Enhancements
 
 This section focuses on improvements primarily impacting the administrative interface and its backend interactions.
@@ -26,6 +28,7 @@ This section focuses on improvements primarily impacting the administrative inte
     5.  On the admin client-side components, configure the tRPC client and use `@trpc/react-query` hooks (e.g., `trpc.adminBanner.getAll.useQuery()`, `trpc.adminBanner.create.useMutation()`) to interact with the backend, replacing direct `ky` calls.
 *   **Considerations:**
     *   Start with new admin features or by refactoring a few existing API interactions to tRPC.
+    *   **Broader Applicability:** While the immediate focus is the admin panel, the principles of tRPC (type-safe APIs) would be equally beneficial for any client-server interactions on the customer website if it develops complex user-specific functionalities requiring backend calls (e.g., managing profiles, viewing order history).
 
 ### 2. Leverage Next.js Server Actions for Mutations
 
@@ -48,7 +51,7 @@ This section focuses on improvements primarily impacting the administrative inte
     3.  Attach these Server Actions to `<form action={myServerAction}>` or call them from event handlers in admin client components.
 *   **Considerations:**
     *   Ensure proper validation and error handling within Server Actions.
-    *   Server Actions are best suited for mutations, not for data queries (GET requests).
+    *   Server Actions are best suited for mutations, not for data queries (GET requests). (Note: While Server Actions *can* be used for queries, it's not their primary design focus compared to tRPC or route handlers for GETs).
 
 ## Customer Website Enhancements
 
@@ -72,6 +75,7 @@ This section focuses on improvements for the public-facing e-commerce website, e
 *   **Considerations:**
     *   This may involve translating existing GROQ queries used for admin purposes if they were to be reused, or creating new, optimized GraphQL queries specifically for the customer view.
     *   Sanity's GraphQL API rate limits and query complexity should be considered for high-traffic customer pages.
+    *   **Admin Panel Alignment:** While the primary driver here is the customer website, standardizing on GraphQL for Sanity reads could eventually be extended to the admin panel as well for complete consistency across the project, if desired. This would simplify data fetching logic overall.
 
 ### 2. SEO and Content Presentation
 
