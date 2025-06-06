@@ -48,6 +48,7 @@ The system architecture is composed of core components: front-end, back-end, ide
 
 The integration of **Sanity** ensures that product information, user-generated content, and any dynamic data can be updated and managed easily through a content management interface. The platform can pull content from **Sanity** to dynamically update the product listings, blogs, or promotional materials.
 
+Sanity serves as the primary master datastore for the product catalog (cloths, variants, media) and related content (categories, banners, grid items). The application's backend API routes and command handlers orchestrate writing this data to Sanity.
 - **Dynamic Client (No CDN use):**  
   Manages dynamic data like **category**, **subcategory**, **banner**, **color**, **grid-item**, and **size**. This data is retrieved from Sanity without utilizing the CDN.
 
@@ -128,19 +129,37 @@ not yet
 
 ### 🔍 **System Review and Future Improvements** 🔍
 
-- **Improved Customer Dashboard**:
+This section outlines potential enhancements based on a recent code analysis, focusing on leveraging modern technologies and optimizing existing patterns. For a more detailed breakdown of these suggestions, please refer to `enhancement.md`.
 
-  - A more comprehensive interface for customers is planned, with features such as order tracking, wishlists, and personalized recommendations to enhance user engagement.
+#### **1. Modernizing API and Data Handling**
 
-- **Optimized User Experience**:
+*   **Standardize Sanity Data Reads with GraphQL:**
+    *   Currently, Sanity data is read using both direct client GROQ queries (for products) and GraphQL (for categories). Consider migrating all Sanity read operations to use its GraphQL API for a consistent data-fetching approach and potentially more precise data requests.
+*   **Adopt tRPC for Internal Type-Safe APIs:**
+    *   The current internal REST-like API routes (client-to-Next.js backend) can be enhanced by adopting tRPC. This would provide end-to-end type safety between the client and server, improving developer experience and reducing runtime errors, especially for interactions with the Supabase/PostgreSQL database (orders, user profiles, etc.).
+*   **Leverage Next.js Server Actions for Mutations:**
+    *   Simplify data mutation operations (forms, delete actions in the admin panel) by using Next.js Server Actions. This can reduce boilerplate API route handlers and streamline the data flow from client components to server-side command handlers.
 
-  - The product search feature is expected to be enhanced with AI/ML capabilities to offer tailored recommendations, improving the overall shopping experience.
+#### **2. Enhancing SEO for Customer-Facing System**
 
-- **Enhanced Analytics**:
+*   **Dynamic Page Metadata:**
+    *   Implement dynamic metadata generation (titles, descriptions, Open Graph tags) for all customer-facing pages (products, categories) using Next.js's `generateMetadata` function. This function should fetch SEO data stored in Sanity for each page.
+*   **Optimal Rendering Strategies (SSR/SSG/ISR):**
+    *   Utilize Server-Side Rendering (SSR), Static Site Generation (SSG), or Incremental Static Regeneration (ISR) for customer-facing pages to ensure they are fully crawlable and SEO-friendly. The choice depends on content update frequency.
+*   **Advanced SEO with `next-seo`:**
+    *   For more complex SEO requirements like JSON-LD structured data, detailed Open Graph/Twitter cards, or easier management of numerous SEO tags, consider integrating the `next-seo` library.
+*   **Sitemaps and `robots.txt`:**
+    *   Implement dynamic sitemap generation (`sitemap.ts`) to list all indexable product and category pages. Ensure a well-configured `robots.txt` guides search engine crawlers effectively.
 
-  - A future improvement would include an **analytics dashboard** for monitoring customer behavior, product performance, and sales trends, providing valuable insights for business decisions.
+#### **3. Existing Planned Improvements**
 
-- **Mobile App**:
-  - Expanding the platform to mobile apps for **iOS and Android** will help increase customer engagement and expand the user base.
+*   **Improved Customer Dashboard**:
+    *   A more comprehensive interface for customers is planned, with features such as order tracking, wishlists, and personalized recommendations to enhance user engagement.
+*   **Optimized User Experience**:
+    *   The product search feature is expected to be enhanced with AI/ML capabilities to offer tailored recommendations, improving the overall shopping experience.
+*   **Enhanced Analytics**:
+    *   A future improvement would include an **analytics dashboard** for monitoring customer behavior, product performance, and sales trends, providing valuable insights for business decisions.
+*   **Mobile App**:
+    *   Expanding the platform to mobile apps for **iOS and Android** will help increase customer engagement and expand the user base.
 
 ---
