@@ -47,6 +47,7 @@ graph LR
     end
 
     subgraph Third_Party_Services [Third-Party Services]
+        direction LR
         ClerkAuth[Clerk.dev (Authentication)]
         CloudflareCDN[Cloudflare CDN (Static Assets)]
     end
@@ -59,7 +60,7 @@ graph LR
     UserCustomer --> CustomerUI
     CustomerUI --> CustomerAPICalls
     CustomerAPICalls --> APIRoutes
-    CustomerAPICalls --> SanityAPI  // Direct reads for products/content
+    CustomerAPICalls --> SanityAPI
 
     APIRoutes --> AppLogic
     AppLogic --> SanityAPI
@@ -73,9 +74,10 @@ graph LR
 
     %% Authentication and CDN
     AdminUI --> ClerkAuth
-    CustomerUI --> ClerkAuth // Assuming Clerk is also for customer auth, if not, adjust
+    CustomerUI --> ClerkAuth
     Next_js_Admin_Panel --> CloudflareCDN
     Next_js_Customer_Website --> CloudflareCDN
+
 ```
 
 **Explanation of Components and Flows (System Architecture):**
