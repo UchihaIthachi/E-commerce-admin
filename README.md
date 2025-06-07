@@ -61,6 +61,7 @@ Sanity serves as the primary master datastore for the product catalog (cloths, v
 - **Static Client (Uses CDN):**  
   Manages static content such as **cloth** product images, which benefit from the caching and fast delivery through **Sanity's CDN**.
 
+The system also leverages Sanity's GraphQL API for specific read operations (e.g., fetching category data) and it's the recommended approach for standardizing data retrieval from Sanity in the future.
 ---
 
 - **Backend (Database, Authentication, Session Management):**  
@@ -111,6 +112,13 @@ The project employs several key architecture patterns to ensure scalability, mai
 - **Headless CMS Pattern:**  
   The system integrates **Sanity CMS** as a **Headless CMS**, enabling content management and delivery as structured data through APIs. This pattern decouples content management from the presentation layer, offering flexibility and scalability.
 
+#### Modern API Patterns (Admin Panel)
+
+In addition to the foundational patterns, the Admin Panel is progressively adopting modern API strategies to enhance developer experience and type safety:
+*   **tRPC:** Being introduced for internal client-server communication, providing end-to-end type-safe APIs for features like Banner, Color, and Size management, as well as for dashboard data retrieval.
+*   **Next.js Server Actions:** Used for handling form mutations directly from server components or client components, as seen in Category management. This simplifies data submission flows.
+
+For more detailed explanations of these API strategies, including GraphQL usage with Sanity and the tRPC implementation pattern, please refer to the "[API Strategies and Design Patterns](./enhancement.md#3-api-strategies-and-design-patterns)" section in the enhancement document.
 ---
 
 ### 🔨 **Development Methodology** 🔨

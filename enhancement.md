@@ -135,7 +135,59 @@ This section focuses on improvements for the public-facing e-commerce website, e
 *   **Considerations:**
     *   Ensure the sitemap reflects actual public content and is updated as content changes.
 
-## 3. Admin Panel UI/UX Enhancements (Conceptual)
+## 3. API Strategies and Design Patterns
+
+### GraphQL with Sanity
+
+GraphQL is utilized in this project specifically for interacting with Sanity, the headless CMS, leveraging its built-in GraphQL API.
+
+*   **Current Usage:**
+    *   The primary instance of GraphQL usage is for reading structured content from Sanity. For example, the `category-repository.ts` uses a `graphqlClient` to fetch category data with specific fields.
+    *   This approach allows for precise data fetching, requesting only the necessary fields from Sanity, which can be more efficient than fetching entire documents with GROQ in some cases.
+    *   The `graphqlClient` is configured in `src/server/infrastructure/clients/graphqlClient.ts` and targets Sanity's GraphQL endpoint, using an API token for authentication.
+
+*   **Recommended Strategy (Reiteration from Section 1.1):**
+    *   As detailed in the "API and Data Handling Modernization" section (specifically point 1.1 "Standardize Sanity Data Reads with GraphQL"), it is recommended to expand the use of GraphQL for *all* read operations from Sanity across the application (both admin and customer-facing parts).
+    *   This would involve refactoring existing GROQ queries (e.g., in `src/lib/api/cloth.ts` for fetching product data) to their GraphQL equivalents.
+
+*   **Data Flow / Pattern:**
+    *   **For Reads:** `Next.js Component (Client or Server) -> Data Fetching Logic (e.g., tRPC query, Server Action, or direct fetch function) -> [Optional: Repository Layer] -> graphqlClient -> Sanity GraphQL API`.
+    *   **For Writes (Mutations to Sanity):** While Sanity's GraphQL API supports mutations, the current project primarily uses the Sanity document client (`dynamicClient.create()`, `dynamicClient.patch()`) for write operations (e.g., in `createProductCommandHandler.ts`, `category-repository.ts` for writes). This is a valid and often simpler approach for direct document manipulation in Sanity. A future consideration could be to evaluate GraphQL mutations for Sanity if complex transactional writes involving multiple related documents become common, but the current document client approach is effective.
+
+*   **Benefits of Using GraphQL for Sanity Reads:**
+    *   **Precision Fetching:** Request only the data fields needed, reducing over-fetching and improving performance.
+    *   **Strong Typing (with code generation):** Sanity's GraphQL schema can be used with tools like GraphQL Code Generator to create TypeScript types for queries and responses, enhancing type safety.
+    *   **Consistency:** Provides a standardized way to query data from Sanity across different parts of the application.
+
+### tRPC for Internal Admin APIs
+
+tRPC has been introduced to modernize and streamline the internal API communication within the Admin Panel, particularly for interactions between client components and the Next.js backend.
+
+*   **Current Implementation (Examples: Banners, Colors, Sizes, Dashboard KPIs):**
+    *   **Type-Safe Procedures:** Replaced traditional REST-like API route handlers with type-safe tRPC procedures for CRUD operations and data fetching.
+    *   **Server-Side Structure:**
+        *   A main tRPC router (`src/server/trpc/root.ts`) aggregates feature-specific sub-routers (e.g., `adminBannerRouter`, `adminColorRouter`) typically located in `src/server/trpc/routers/admin/`.
+        *   Each procedure within these routers calls existing application-layer command or query handlers (`src/server/application/features/...`), ensuring reuse of business logic.
+        *   Input and output validation is enforced using Zod schemas directly within the procedure definitions.
+        *   A basic tRPC context (`src/server/trpc/context.ts`) is set up, ready for future integration of authentication (e.g., Clerk session) to create protected procedures.
+        *   A single Next.js API route (`src/app/api/trpc/[trpc]/route.ts`) serves all tRPC requests.
+        *   `superjson` is used as a data transformer to handle serialization of complex types like Dates.
+    *   **Client-Side Integration:**
+        *   The tRPC client is initialized in `src/lib/providers.tsx`, configured with `httpBatchLink` and `superjson`, and integrated with `@tanstack/react-query`.
+        *   Admin panel components now use tRPC hooks (`.useQuery()`, `.useMutation()`) for data fetching and mutations.
+        *   These hooks provide typed data, loading/error states, and methods for cache invalidation (e.g., `trpc.useContext().adminFeature.getAll.invalidate()`) which is used in `onSuccess` callbacks of mutations.
+
+*   **Benefits Achieved:**
+    *   **End-to-End Type Safety:** Eliminates runtime errors due to client-server type mismatches for refactored features.
+    *   **Improved Developer Experience:** Autocompletion for API procedures and typed responses/inputs directly in client components. Simplified data fetching and mutation logic.
+    *   **Simplified Cache Management:** Seamless integration with `@tanstack/react-query`'s caching, with clear patterns for cache invalidation.
+    *   **Reduced Boilerplate:** For refactored features, custom API route handlers for mutations and some queries have been removed in favor of tRPC procedures.
+
+*   **Recommended Strategy (Reiteration from Section 1.2):**
+    *   Continue refactoring remaining Admin Panel internal APIs (those still using traditional fetch calls to Next.js API routes) to use tRPC. This will bring consistency and the aforementioned benefits to the entire admin backend communication layer.
+    *   Integrate authentication (e.g., Clerk user session) into the tRPC context to create protected procedures, ensuring that only authorized admin users can access tRPC endpoints.
+
+## 4. Admin Panel UI/UX Enhancements (Conceptual)
 
 For detailed conceptual suggestions regarding improvements to the Admin Panel's User Interface (UI) and User Experience (UX), including ideas for a new Admin Dashboard, general usability principles, and specific enhancements for sections like Product and Order management, please refer to the following document:
 
