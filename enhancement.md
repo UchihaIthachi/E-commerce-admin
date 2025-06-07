@@ -134,4 +134,10 @@ This section focuses on improvements for the public-facing e-commerce website, e
     2.  Create `src/app/sitemap.ts`.
 *   **Considerations:**
     *   Ensure the sitemap reflects actual public content and is updated as content changes.
+
+## 3. Admin Panel UI/UX Enhancements (Conceptual)
+
+For detailed conceptual suggestions regarding improvements to the Admin Panel's User Interface (UI) and User Experience (UX), including ideas for a new Admin Dashboard, general usability principles, and specific enhancements for sections like Product and Order management, please refer to the following document:
+
+*   **[Admin Panel UI/UX and Feature Suggestions](./docs/admin_ui_ux_suggestions.md)**
 ```
