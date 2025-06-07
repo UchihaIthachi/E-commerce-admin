@@ -1,4 +1,4 @@
-import { router, publicProcedure } from '../../../trpc';
+import { router, publicProcedure } from '../../trpc';
 import { z } from 'zod';
 import getSizesQueryHandler from '@/server/application/features/size/queries/get-sizes-query-handler';
 import getSizeQueryHandler from '@/server/application/features/size/queries/get-size-query-handler';

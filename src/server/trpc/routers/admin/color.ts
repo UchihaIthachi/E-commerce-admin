@@ -1,4 +1,4 @@
-import { router, publicProcedure } from '../../../trpc'; // Adjusted path
+import { router, publicProcedure } from '../../trpc';
 import { z } from 'zod';
 import getColorsQueryHandler from '@/server/application/features/color/queries/get-colors-query-handler';
 import getColorQueryHandler from '@/server/application/features/color/queries/get-color-query-handler';
