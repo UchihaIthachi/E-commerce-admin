@@ -2,8 +2,8 @@
 import { ThemeProvider } from "@/components/theme-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { httpBatchLink } from "@trpc/client";
-import React, { useState } from "react";
+import { httpBatchLink, loggerLink } from "@trpc/client"; // Added loggerLink
+import React, { useState, useEffect } from "react"; // Added useEffect
 import { AppRouter } from "@/server/trpc/root"; // Import AppRouter type
 import { createTRPCReact } from "@trpc/react-query";
 import superjson from 'superjson'; // Ensure superjson is imported
@@ -26,10 +26,18 @@ function getBaseUrl() {
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
+  const [isClient, setIsClient] = useState(false); // State to track client-side mount
+
+  useEffect(() => {
+    setIsClient(true); // Set to true once component mounts on client
+  }, []);
+
   const [trpcClient] = useState(() =>
     trpc.createClient({
       transformer: superjson, // Use superjson for client-side transformation
       links: [
+        // Optional: Add loggerLink for development debugging of tRPC calls
+        loggerLink({ enabled: (opts) => process.env.NODE_ENV === 'development' || (opts.direction === 'down' && opts.result instanceof Error) }),
         httpBatchLink({
           url: `${getBaseUrl()}/api/trpc`,
         }),
@@ -42,7 +50,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           {children}
-          <ReactQueryDevtools initialIsOpen={false} />
+          {isClient && process.env.NODE_ENV === 'development' && (
+            <ReactQueryDevtools initialIsOpen={false} />
+          )}
         </ThemeProvider>
       </QueryClientProvider>
     </trpc.Provider>
