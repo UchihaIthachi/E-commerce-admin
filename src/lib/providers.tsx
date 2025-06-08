@@ -6,14 +6,14 @@ import { httpBatchLink, loggerLink } from "@trpc/client"; // Added loggerLink
 import React, { useState, useEffect } from "react"; // Added useEffect
 import { AppRouter } from "@/server/trpc/root"; // Import AppRouter type
 import { createTRPCReact } from "@trpc/react-query";
-import superjson from 'superjson'; // Ensure superjson is imported
+import superjson from "superjson"; // Ensure superjson is imported
 
 export const trpc = createTRPCReact<AppRouter>(); // Create tRPC hook
 
 function getBaseUrl() {
-  if (typeof window !== 'undefined')
+  if (typeof window !== "undefined")
     // browser should use relative path
-    return '';
+    return "";
   if (process.env.VERCEL_URL)
     // reference for vercel.com
     return `https://${process.env.VERCEL_URL}`;
@@ -37,7 +37,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       transformer: superjson, // Use superjson for client-side transformation
       links: [
         // Optional: Add loggerLink for development debugging of tRPC calls
-        loggerLink({ enabled: (opts) => process.env.NODE_ENV === 'development' || (opts.direction === 'down' && opts.result instanceof Error) }),
+        loggerLink({
+          enabled: (opts) =>
+            process.env.NODE_ENV === "development" ||
+            (opts.direction === "down" && opts.result instanceof Error),
+        }),
         httpBatchLink({
           url: `${getBaseUrl()}/api/trpc`,
         }),
@@ -50,9 +54,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           {children}
-          {isClient && process.env.NODE_ENV === 'development' && (
-            <ReactQueryDevtools initialIsOpen={false} />
-          )}
+          {
+            isClient && process.env.NODE_ENV === "development"
+            // && (
+            //   <ReactQueryDevtools initialIsOpen={false} />
+            // )
+          }
         </ThemeProvider>
       </QueryClientProvider>
     </trpc.Provider>
