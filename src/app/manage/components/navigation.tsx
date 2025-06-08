@@ -14,12 +14,12 @@ import {UserButton} from "@clerk/nextjs";
 
 function Navigation() {
     return (
-        <div className="border-r min-h-screen flex flex-col justify-between">
+        <div className="bg-background border-r min-h-screen flex flex-col justify-between">
             <div>
-                <h2 className="p-2">Kandy Selection</h2>
+                <h2 className="p-2 text-lg font-bold md:p-4 md:text-xl">Style Stock</h2>
                 <NavigationMenu orientation="vertical">
                     <NavigationMenuList asChild>
-                        <ul className="flex flex-col items-stretch py-4 pl-4 gap-y-2 space-x-0">
+                        <ul className="flex flex-col items-stretch py-2 pl-2 md:py-4 md:pl-4 gap-y-2 space-x-0">
                             <NavigationMenuItem>
                                 <Link href="/manage/dashboard" legacyBehavior passHref>
                                     <NavigationMenuLink className={navigationMenuTriggerStyle()}>
@@ -120,7 +120,7 @@ function Navigation() {
                     </NavigationMenuList>
                 </NavigationMenu>
             </div>
-            <div className={"px-8 py-4"}>
+            <div className={"px-4 py-3 md:px-8 md:py-4 border-t"}>
                 <UserButton />
             </div>
         </div>
