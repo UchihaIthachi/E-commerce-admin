@@ -127,7 +127,7 @@ function AddCategoryForm() {
                 <form
                     action={formAction} // Use the server action
                     // onSubmit={form.handleSubmit(onSubmit)} // No longer needed if action is used directly
-                    className="w-1/2 py-4"
+                    className="w-full lg:w-3/4 xl:w-1/2 py-4"
                 >
                     <h4>Basic Information</h4>
                     <div className="mt-4 flex flex-col gap-y-4">

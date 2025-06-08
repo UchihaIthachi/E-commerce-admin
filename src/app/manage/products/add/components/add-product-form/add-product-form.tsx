@@ -22,6 +22,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import TextAreaInput from "@/app/manage/components/form/text-area-input";
 import SwitchInput from "@/app/manage/components/form/checkbox-input";
+import FormSection from '@/app/manage/components/form/FormSection'; // Import FormSection
 
 const AddProductFormSchema = z
   .object({
@@ -170,13 +171,13 @@ function AddProductForm() {
       <Form {...AddProductForm}>
         <form
           onSubmit={AddProductForm.handleSubmit(onSubmit)}
-          className="w-1/2"
+          className="w-full lg:w-3/4 xl:w-1/2"
         >
-          <h4>Basic Information</h4>
-          <div className="flex flex-col gap-y-4">
-            <TextInput name="name" placeholder="Frill Dress" label="Name" />
-            <TextInput name="sku" placeholder="SKU" label="SKU" />
-            <SwitchInput name={`enabled`} label="Enabled" />
+          <FormSection title="Basic Information" className="mt-0"> {/* Override default mt-8 for first section */}
+            <div className="flex flex-col gap-y-4">
+              <TextInput name="name" placeholder="Frill Dress" label="Name" />
+              <TextInput name="sku" placeholder="SKU" label="SKU" />
+              <SwitchInput name={`enabled`} label="Enabled" />
             <TextAreaInput
               name={"description"}
               label={"Description"}
@@ -210,19 +211,21 @@ function AddProductForm() {
                 </SelectItem>
               ))}
             </SelectInput>
-          </div>
-          <div className="mt-8">
-            <h4>Variants</h4>
+            </div>
+          </FormSection>
+
+          <FormSection title="Variants">
             <div>
               <VariantsInput name="variants" label="Variants" />
             </div>
-          </div>
-          <div className="mt-8">
-            <h4>Media</h4>
+          </FormSection>
+
+          <FormSection title="Media">
+            {/* The MediaInput component likely has its own internal padding/margins for its label if FormSection's default div mt-4 is too much. Or adjust MediaInput. */}
             <MediaInput name="media" label="Media" />
-          </div>
-          <div className="mt-8">
-            <h4>SEO</h4>
+          </FormSection>
+
+          <FormSection title="SEO">
             <div className="grid gap-y-2">
               <TextInput name="seo.title" placeholder="" label="Title" />
               <TextInput
@@ -237,7 +240,7 @@ function AddProductForm() {
                 label="OG Description"
               />
               <div>
-                <h6>OG Image</h6>
+                <h5>OG Image</h5>
                 <div className={"grid grid-cols-1 gap-y-4"}>
                   <ImagesInput
                     constrain={1}

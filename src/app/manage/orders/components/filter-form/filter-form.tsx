@@ -105,10 +105,10 @@ const FilterForm = () => {
 
   return (
     <Form {...FilterForm}>
-      <form onSubmit={FilterForm.handleSubmit(onSubmit)} className="py-4">
+      <form onSubmit={FilterForm.handleSubmit(onSubmit)} className="py-4 space-y-4"> {/* Added space-y-4 for better spacing between rows of inputs */}
         <DateRangeInput name={"range"} label={"Date Range"} />
-        <div>
-          <div className="w-1/2 ">
+        <div className="space-y-4 md:space-y-0 md:flex md:gap-x-4"> {/* Flex container for select inputs */}
+          <div className="w-full md:w-1/2">
             <SelectInput
               name={"shipping_method"}
               label={"Shipping Method"}
@@ -121,7 +121,7 @@ const FilterForm = () => {
               ))}
             </SelectInput>
           </div>
-          <div className="w-1/2 ">
+          <div className="w-full md:w-1/2">
             <SelectInput
               name={"payment_method"}
               label={"Payment Method"}
@@ -134,7 +134,9 @@ const FilterForm = () => {
               ))}
             </SelectInput>
           </div>
-          <div className="w-1/2 ">
+        </div>
+        <div className="space-y-4 md:space-y-0 md:flex md:gap-x-4"> {/* Flex container for select inputs */}
+          <div className="w-full md:w-1/2">
             <SelectInput
               name={"payment_status"}
               label={"Payment Status"}
@@ -147,7 +149,7 @@ const FilterForm = () => {
               ))}
             </SelectInput>
           </div>
-          <div className="w-1/2 ">
+          <div className="w-full md:w-1/2">
             <SelectInput
               name={"delivery_status"}
               label={"Delivery Status"}
@@ -160,7 +162,9 @@ const FilterForm = () => {
               ))}
             </SelectInput>
           </div>
-          <div className="w-1/2 ">
+        </div>
+        <div className="space-y-4 md:space-y-0 md:flex md:gap-x-4"> {/* Flex container for the last select input, or adjust if only one */}
+          <div className="w-full md:w-1/2"> {/* This will now be half width on medium screens. If it should be full, remove md:w-1/2 */}
             <SelectInput
               name={"order_status"}
               label={"Order Status"}

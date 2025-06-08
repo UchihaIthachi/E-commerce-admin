@@ -89,7 +89,7 @@ function AddSubCategoryForm() {
             <Form {...AddSubCategoryForm}>
                 <form
                     onSubmit={AddSubCategoryForm.handleSubmit(onSubmit)}
-                    className="w-1/2 py-4"
+                    className="w-full lg:w-3/4 xl:w-1/2 py-4"
                 >
                     <h4>Basic Information</h4>
                     <div className="mt-4 flex flex-col gap-y-4">
@@ -124,7 +124,7 @@ function AddSubCategoryForm() {
                                 label="OG Description"
                             />
                             <div>
-                                <h6>OG Image</h6>
+                                <h5>OG Image</h5>
                                 <div className={"grid grid-cols-1 gap-y-4"}>
                                     <ImagesInput
                                         constrain={1}
