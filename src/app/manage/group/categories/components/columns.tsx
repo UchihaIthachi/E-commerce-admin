@@ -9,7 +9,7 @@ import { GetCategoriesDTO } from "@/server/application/common/dtos/category";
 import { ColumnDef } from "@tanstack/react-table";
 // Remove: import { MoreHorizontal } from "lucide-react"; // Not used directly here
 import { z } from "zod";
-import { deleteCategoryAction } from "../../actions"; // Import the server action
+import { deleteCategoryAction } from "../actions"; // Import the server action
 
 export const columns: ColumnDef<z.infer<typeof GetCategoriesDTO>>[] = [
   {
