@@ -172,7 +172,7 @@ function AddCategoryForm() {
                      {state?.errors?._form && (
                         <p className="text-sm font-medium text-destructive">{state.errors._form.join(', ')}</p>
                      )}
-                    <div className="my-4">
+                    <div className="mt-8">
                         <SubmitButton /> {/* Use the new SubmitButton */}
                     </div>
                 </form>

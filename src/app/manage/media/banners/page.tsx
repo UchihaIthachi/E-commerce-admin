@@ -9,7 +9,7 @@ function BannersPage() {
 
   return (
     <div>
-      <h2 className="p-2">Banners</h2>
+      <h2 className="pt-6 px-6">Banners</h2>
       <div className="p-4">
         {isLoading && <p>Loading...</p>}
         {error && <p>Error fetching banners: {error.message}</p>}

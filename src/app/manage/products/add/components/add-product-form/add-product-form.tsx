@@ -257,7 +257,7 @@ function AddProductForm() {
             </div>
           </div>
 
-          <div className="my-4">
+          <div className="mt-8">
             <Button type="submit">
               {isAddProductLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

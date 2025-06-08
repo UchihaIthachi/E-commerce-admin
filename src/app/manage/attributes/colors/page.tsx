@@ -10,7 +10,7 @@ function ColorsPage() {
 
   return (
     <div>
-      <h2 className="p-2 text-lg font-semibold">Colors</h2>
+      <h2 className="pt-6 px-6">Colors</h2>
       <div className="p-4 mx-auto">
         {isLoading && (
           <div className="flex items-center">

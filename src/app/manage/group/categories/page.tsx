@@ -13,7 +13,7 @@ function CategoriesPage() {
 
   return (
     <div>
-      <h2 className="p-2">Categories</h2>
+      <h2 className="pt-6 px-6">Categories</h2>
       <div className="p-4">
         {isLoading ? (
           "Loading..."

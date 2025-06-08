@@ -4,7 +4,7 @@ import { columns } from "./components/columns";
 import { DataTable } from "./components/data-table";
 import { getOrders } from "@/lib/api/order";
 import { useQuery } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import FilterForm from "@/app/manage/orders/components/filter-form/filter-form";
 import { useSearchParams } from "next/navigation";
 import { getRange } from "@/app/manage/orders/components/utils/utils";
@@ -26,18 +26,28 @@ function OrdersPage() {
 
   return (
     <div>
-      <h2 className="p-2">Orders</h2>
+      <h2 className="pt-6 px-6">Orders</h2>
       <div className={"p-4 grid grid-cols-1 gap-y-4"}>
-        <div className={"p-4 grid grid-cols-2 gap-y-4"}>
-          <Card className={"pt-4 px-4"}>
-            <h4>Filters</h4>
-            <FilterForm />
+        <div className={"p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}> {/* Adjusted grid layout for responsiveness and consistent gap */}
+          <Card> {/* Removed pt-4 px-4 */}
+            <CardHeader>
+              <CardTitle>Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FilterForm />
+            </CardContent>
           </Card>
-          { isLoading? (<div className='pt-4 px-4 text-center'>Loading...</div>) : 
+          { isLoading? (<div className='pt-4 px-4 text-center col-span-1 md:col-span-1'>Loading...</div>) :
           (
-            <Card className="pt-4 px-4 flex flex-col justify-center items-center">
-              <h4>Sales</h4>
-              <h1 className="text-center">{(totalSales) ? `${totalSales} LKR` : "No sales for given filters"}</h1>
+            <Card> {/* Removed pt-4 px-4 and flex layout classes */}
+              <CardHeader>
+                <CardTitle>Sales</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col justify-center items-center h-full"> {/* Applied flex layout here, added h-full for better centering if card height is constrained */}
+                <h1 className="text-3xl font-bold text-center"> {/* Ensured sales figure is prominent */}
+                  {(totalSales) ? `${totalSales.toLocaleString()} LKR` : "No sales for given filters"}
+                </h1>
+              </CardContent>
             </Card>
           )
           }

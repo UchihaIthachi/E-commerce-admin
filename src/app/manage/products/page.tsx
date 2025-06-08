@@ -15,7 +15,7 @@ function ProductsPage() {
 
     return (
         <div>
-            <h2 className="p-2">Products</h2>
+            <h2 className="pt-6 px-6">Products</h2>
             <div className="p-4">
                 {isLoading ? (
                     "Loading..."
