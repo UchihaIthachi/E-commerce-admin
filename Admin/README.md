@@ -115,10 +115,10 @@ The project employs several key architecture patterns to ensure scalability, mai
 #### Modern API Patterns (Admin Panel)
 
 In addition to the foundational patterns, the Admin Panel is progressively adopting modern API strategies to enhance developer experience and type safety:
-*   **tRPC:** Being introduced for internal client-server communication, providing end-to-end type-safe APIs for features like Banner, Color, and Size management, as well as for dashboard data retrieval.
-*   **Next.js Server Actions:** Used for handling form mutations directly from server components or client components, as seen in Category management. This simplifies data submission flows.
+*   **tRPC:** Actively used and being expanded for internal client-server communication, providing end-to-end type-safe APIs. It has been implemented for features like Banner, Color, and Size management, as well as for dashboard data retrieval, demonstrating clear benefits in type safety and developer experience.
+*   **Next.js Server Actions:** Used for handling form mutations directly from server components or client components, as seen in Category management. This simplifies data submission flows, and further refactoring of mutation flows to leverage Server Actions is ongoing.
 
-For more detailed explanations of these API strategies, including GraphQL usage with Sanity and the tRPC implementation pattern, please refer to the "[API Strategies and Design Patterns](./enhancement.md#3-api-strategies-and-design-patterns)" section in the enhancement document.
+For more detailed explanations of these API strategies, including GraphQL usage with Sanity, the tRPC implementation pattern, and the broader plan for Server Actions, please refer to the "[API Strategies and Design Patterns](./enhancement.md#3-api-strategies-and-design-patterns)" and "[Admin Panel Enhancements](./enhancement.md#admin-panel-enhancements)" sections in the enhancement document.
 ---
 
 ### 🔨 **Development Methodology** 🔨
@@ -149,10 +149,10 @@ This section outlines potential enhancements based on a recent code analysis, fo
 
 *   **Standardize Sanity Data Reads with GraphQL:**
     *   Currently, Sanity data is read using both direct client GROQ queries (for products) and GraphQL (for categories). Consider migrating all Sanity read operations to use its GraphQL API for a consistent data-fetching approach and potentially more precise data requests.
-*   **Adopt tRPC for Internal Type-Safe APIs:**
-    *   The current internal REST-like API routes (client-to-Next.js backend) can be enhanced by adopting tRPC. This would provide end-to-end type safety between the client and server, improving developer experience and reducing runtime errors, especially for interactions with the Supabase/PostgreSQL database (orders, user profiles, etc.).
+*   **Expand tRPC Adoption for Internal Type-Safe APIs:**
+    *   tRPC has been successfully introduced for several admin panel features (like Banners, Colors, Sizes, Dashboard KPIs), proving its benefits in end-to-end type safety and improved developer experience. The plan is to continue refactoring remaining internal REST-like API routes to tRPC, especially for interactions with the Supabase/PostgreSQL database.
 *   **Leverage Next.js Server Actions for Mutations:**
-    *   Simplify data mutation operations (forms, delete actions in the admin panel) by using Next.js Server Actions. This can reduce boilerplate API route handlers and streamline the data flow from client components to server-side command handlers.
+    *   To simplify data mutation operations (e.g., forms, delete actions in the admin panel), the use of Next.js Server Actions is being expanded. While already used for specific cases like Category management, a broader refactoring of mutation flows is planned to further reduce boilerplate API route handlers and streamline data flow.
 
 #### **2. Enhancing SEO for Customer-Facing System**
 
