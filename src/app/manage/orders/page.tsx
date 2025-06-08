@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import FilterForm from "@/app/manage/orders/components/filter-form/filter-form";
 import { useSearchParams } from "next/navigation";
+import LoadingSpinner from '@/components/ui/LoadingSpinner'; // Import LoadingSpinner
 import { getRange } from "@/app/manage/orders/components/utils/utils";
 
 function OrdersPage() {
@@ -37,7 +38,11 @@ function OrdersPage() {
               <FilterForm />
             </CardContent>
           </Card>
-          { isLoading? (<div className='pt-4 px-4 text-center col-span-1 md:col-span-1'>Loading...</div>) :
+          { isLoading? (
+            <div className='pt-4 px-4 text-center col-span-1 md:col-span-1 flex justify-center items-center h-full'> {/* Added flex centering and h-full */}
+              <LoadingSpinner size="h-10 w-10" />
+            </div>
+            ) :
           (
             <Card> {/* Removed pt-4 px-4 and flex layout classes */}
               <CardHeader>
@@ -54,7 +59,9 @@ function OrdersPage() {
         </div>
         <div className="overflow-x-scroll ">
           {isLoading ? (
-            "Loading..."
+            <div className="flex justify-center items-center py-10">
+              <LoadingSpinner size="h-12 w-12" />
+            </div>
           ) : (
             <DataTable columns={columns} data={data!} />
 

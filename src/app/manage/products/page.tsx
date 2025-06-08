@@ -5,6 +5,7 @@ import {DataTable} from "./components/data-table";
 import {getClothes} from "@/lib/api/cloth";
 import {useQuery} from "@tanstack/react-query";
 import PageLayout from '@/app/manage/components/PageLayout'; // Import PageLayout
+import LoadingSpinner from '@/components/ui/LoadingSpinner'; // Import LoadingSpinner
 
 function ProductsPage() {
     const {data: clothes, isLoading} = useQuery({
@@ -21,7 +22,9 @@ function ProductsPage() {
     return (
         <PageLayout title="Products">
             {isLoading ? (
-                <div className="flex justify-center items-center h-full">Loading...</div> // Centered loading
+                <div className="flex justify-center items-center h-full">
+                    <LoadingSpinner size="h-12 w-12" />
+                </div>
             ) : (
                 <DataTable columns={columns} data={clothes!} enabledProductsCount = {enabledProducts!}/>
             )}
