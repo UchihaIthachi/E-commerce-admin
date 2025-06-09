@@ -65,9 +65,16 @@ model User {
   accounts      Account[]
   sessions      Session[]
   addresses     Address[]
+  role          Role      @default(CUSTOMER) // Added user role
 
   Cart   Cart?
   orders Order[]
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  // Add other roles here as needed, e.g., EDITOR, MANAGER
 }
 
 model Address {

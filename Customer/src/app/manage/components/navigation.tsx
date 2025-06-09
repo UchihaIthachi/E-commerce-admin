@@ -10,7 +10,7 @@ import {
 import Link from "next/link";
 
 import {Accordion, AccordionContent, AccordionItem, AccordionTrigger,} from "@/components/ui/accordion";
-import {UserButton} from "@clerk/nextjs";
+// import {UserButton} from "@clerk/nextjs"; // Removed Clerk UserButton
 
 function Navigation() {
     return (
@@ -113,9 +113,9 @@ function Navigation() {
                     </NavigationMenuList>
                 </NavigationMenu>
             </div>
-            <div className={"px-8 py-4"}>
-                <UserButton />
-            </div>
+            {/* <div className={"px-8 py-4"}> // UserButton removed
+                // <UserButton />
+            </div> */}
         </div>
     );
 }
