@@ -82,10 +82,15 @@ export async function POST(request: Request) {
 
     const sessionExpiresIn = Date.now() + (process.env.JWT_REFRESH_TOKEN_EXPIRES_IN_MS ? parseInt(process.env.JWT_REFRESH_TOKEN_EXPIRES_IN_MS) : 7 * 24 * 60 * 60 * 1000); // 7 days in ms
 
+    // Hash the refresh token before storing it in the database.
+    // This is a security best practice. If the database is compromised,
+    // the raw refresh tokens are not exposed, only their hashes.
+    // The actual refresh token is sent to the client in an HTTPOnly cookie.
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
     await prisma.session.create({
         data: {
             userId: user.id,
-            sessionToken: refreshToken, // Ideally, this should be a hashed version of the refresh token.
+            sessionToken: hashedRefreshToken, // Store the hashed refresh token
             expires: new Date(sessionExpiresIn),
         }
     });

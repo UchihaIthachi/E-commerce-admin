@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import prisma from '@/server/infrastructure/clients/prisma';
+import bcrypt from 'bcryptjs';
 import { serialize } from 'cookie';
 import { parse } from 'cookie'; // To parse incoming cookies
 
@@ -44,48 +45,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid or expired refresh token' }, { status: 401, headers });
     }
 
-    // 3. Look up the token in the Session table
-    const session = await prisma.session.findUnique({
-      where: { sessionToken: refreshTokenFromCookie },
-      include: { user: true }
+    // 3. Look up the session by comparing the provided token with stored hashed tokens.
+    // First, retrieve all active sessions for the user identified in the JWT.
+    // This is necessary because we don't store the raw token and cannot directly query by it.
+    const userSessions = await prisma.session.findMany({
+      where: {
+        userId: decodedRefreshToken.userId, // User ID from the verified refresh token
+        expires: { gt: new Date() }       // Only consider sessions that haven't expired
+      },
+      include: { user: true } // Include user data for generating new tokens
     });
 
-    if (!session) {
-      // Token not found in DB, might have been revoked or is invalid
-      // Clear the cookie as a precaution
-      const clearRefreshTokenCookie = serialize('refresh_token', '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/api/auth',
-        expires: new Date(0),
-      });
+    // If no active sessions are found for the user, the token is invalid or has been revoked.
+    if (!userSessions || userSessions.length === 0) {
+      const clearRefreshTokenCookie = serialize('refresh_token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/api/auth', expires: new Date(0) });
+      const headers = new Headers();
+      headers.append('Set-Cookie', clearRefreshTokenCookie);
+      return NextResponse.json({ error: 'No active sessions found for user' }, { status: 401, headers });
+    }
+
+    // Iterate through the user's active sessions.
+    // For each session, compare the refresh token from the cookie with the stored hashed session token.
+    let validSession: any = null; // Consider defining a proper type for session with user
+    for (const currentSession of userSessions) {
+      // Use bcrypt.compare to securely compare the plain-text token from the cookie
+      // with the hashed token stored in the database.
+      const isMatch = await bcrypt.compare(refreshTokenFromCookie, currentSession.sessionToken);
+      if (isMatch) {
+        // Defensive check: Ensure the session from DB is not expired.
+        // This is somewhat redundant due to the 'expires: { gt: new Date() }' in the query,
+        // but provides an extra layer of security against potential race conditions or clock skew.
+        if (new Date(currentSession.expires) < new Date()) {
+            await prisma.session.delete({ where: { id: currentSession.id }}); // Clean up this specific expired session
+            continue; // This session was expired, try to find another match
+        }
+        validSession = currentSession; // Found a valid, matching session
+        break; // Exit the loop once a match is found
+      }
+    }
+
+    // If no session produced a match, the provided refresh token is invalid or revoked.
+    if (!validSession) {
+      const clearRefreshTokenCookie = serialize('refresh_token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/api/auth', expires: new Date(0) });
       const headers = new Headers();
       headers.append('Set-Cookie', clearRefreshTokenCookie);
       return NextResponse.json({ error: 'Session not found or token revoked' }, { status: 401, headers });
     }
 
-    // Check if session is expired based on DB (though JWT expiry should also catch this)
-    if (new Date(session.expires) < new Date()) {
-        await prisma.session.delete({ where: { id: session.id }}); // Clean up expired session
-        const clearRefreshTokenCookie = serialize('refresh_token', '', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/api/auth',
-            expires: new Date(0),
-        });
-        const headers = new Headers();
-        headers.append('Set-Cookie', clearRefreshTokenCookie);
-        return NextResponse.json({ error: 'Refresh token expired (session)' }, { status: 401, headers });
-    }
+    // Ensure the user from the token matches the session user (already implicitly done by querying for decodedRefreshToken.userId)
+    // if (validSession.userId !== decodedRefreshToken.userId) { // This check is technically redundant now
+    //     return NextResponse.json({ error: 'Token user mismatch' }, { status: 403 });
+    // }
 
-    // Ensure the user from the token matches the session user
-    if (session.userId !== decodedRefreshToken.userId) {
-        return NextResponse.json({ error: 'Token user mismatch' }, { status: 403 });
-    }
-
-    const user = session.user;
+    const user = validSession.user;
 
     // 4. Generate a new access token
     const newAccessToken = jwt.sign(
@@ -95,9 +107,10 @@ export async function POST(request: NextRequest) {
     );
 
     // 5. Implement refresh token rotation:
-    // Delete the old session (old refresh token)
+    // Delete the old valid session using its ID. This is part of refresh token rotation.
+    // Rotating tokens helps mitigate the risk of a compromised refresh token being used indefinitely.
     await prisma.session.delete({
-      where: { sessionToken: refreshTokenFromCookie },
+      where: { id: validSession.id },
     });
 
     // Generate a new refresh token
@@ -109,11 +122,13 @@ export async function POST(request: NextRequest) {
 
     const newSessionExpiresIn = Date.now() + (process.env.JWT_REFRESH_TOKEN_EXPIRES_IN_MS ? parseInt(process.env.JWT_REFRESH_TOKEN_EXPIRES_IN_MS) : 7 * 24 * 60 * 60 * 1000);
 
-    // Store the new refresh token in the session table
+    // Store the new refresh token (hashed) in the session table.
+    // Hashing is crucial for security, as explained in login/google callback routes.
+    const hashedNewRefreshToken = await bcrypt.hash(newRefreshToken, 10);
     await prisma.session.create({
       data: {
         userId: user.id,
-        sessionToken: newRefreshToken,
+        sessionToken: hashedNewRefreshToken, // Store the hash of the new refresh token
         expires: new Date(newSessionExpiresIn),
       },
     });

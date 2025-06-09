@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/server/infrastructure/clients/prisma';
 import jwt from 'jsonwebtoken'; // For our app's tokens
-import { serialize } from 'cookie'; // For setting our app's cookies
+import { OAuth2Client } from 'google-auth-library';
+import { serialize, parse } from 'cookie'; // For setting our app's cookies
+import bcrypt from 'bcryptjs';
 import { Role } // Assuming Role enum is available from Prisma client
 
 // Environment variables
@@ -13,6 +15,8 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
 // Helper function to generate application tokens and set cookies (similar to credentials login)
 async function setAppCookiesAndSession(user: { id: string; email: string | null; role: Role }, response: NextResponse) {
+  // This function creates app-specific access and refresh tokens after successful Google authentication.
+  // It also creates a session in the database, storing a hashed version of the app's refresh token.
   if (!JWT_ACCESS_SECRET || !JWT_REFRESH_SECRET) {
     throw new Error('App JWT secrets are not defined.');
   }
@@ -31,10 +35,13 @@ async function setAppCookiesAndSession(user: { id: string; email: string | null;
 
   const sessionExpiresIn = Date.now() + (process.env.JWT_REFRESH_TOKEN_EXPIRES_IN_MS ? parseInt(process.env.JWT_REFRESH_TOKEN_EXPIRES_IN_MS) : 7 * 24 * 60 * 60 * 1000);
 
+  // Hash the application's refresh token before storing it in the database.
+  // This is a security measure to protect the raw token even if the database is compromised.
+  const hashedAppRefreshToken = await bcrypt.hash(appRefreshToken, 10);
   await prisma.session.create({
     data: {
       userId: user.id,
-      sessionToken: appRefreshToken, // Storing the raw refresh token
+      sessionToken: hashedAppRefreshToken, // Store the hashed version of the app refresh token
       expires: new Date(sessionExpiresIn),
     },
   });
@@ -84,21 +91,58 @@ interface GoogleIdTokenPayload {
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
-  // const state = url.searchParams.get('state'); // TODO: Implement CSRF protection with state
 
+  // CSRF Protection: Retrieve the 'state' parameter from Google's callback URL.
+  const callbackState = url.searchParams.get('state');
+
+  // CSRF Protection: Retrieve the 'state' value stored in the 'google_oauth_state' cookie.
+  const cookieHeader = request.headers.get('cookie');
+  const cookies = cookieHeader ? parse(cookieHeader) : {};
+  const storedState = cookies.google_oauth_state;
+
+  // CSRF Protection: Prepare to clear the 'google_oauth_state' cookie.
+  // This cookie is single-use and should be cleared regardless of success or failure.
+  const clearStateCookie = serialize('google_oauth_state', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/api/auth/google', // Must match the path used when setting the cookie
+    expires: new Date(0), // Expire immediately to remove it
+  });
+
+  // CSRF Protection: Validate the state parameter.
+  // This ensures the OAuth flow was initiated by this application and not an attacker.
+  if (!callbackState || !storedState || callbackState !== storedState) {
+    console.error('Invalid OAuth state:', { callbackState, storedState });
+    const errorRedirectUrl = new URL(`${NEXT_PUBLIC_APP_URL}/auth/error?error=InvalidStateParameter`);
+    const errorResponse = NextResponse.redirect(errorRedirectUrl.toString(), { status: 302 });
+    errorResponse.headers.append('Set-Cookie', clearStateCookie);
+    return errorResponse;
+  }
+
+  // State is valid, proceed
   if (!code) {
-    return NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=MissingAuthorizationCode`, { status: 302 });
+    // This error case should also clear the state cookie
+    const errorResponse = NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=MissingAuthorizationCode`, { status: 302 });
+    errorResponse.headers.append('Set-Cookie', clearStateCookie);
+    return errorResponse;
   }
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !NEXT_PUBLIC_APP_URL || !JWT_ACCESS_SECRET || !JWT_REFRESH_SECRET) {
     console.error('Google OAuth or JWT configuration is missing.');
-    return NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=ServerConfigurationError`, { status: 302 });
+    // This error case should also clear the state cookie
+    const errorResponse = NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=ServerConfigurationError`, { status: 302 });
+    errorResponse.headers.append('Set-Cookie', clearStateCookie);
+    return errorResponse;
   }
 
   const redirectUri = `${NEXT_PUBLIC_APP_URL}/api/auth/google/callback`;
+  // The OAuth2Client from 'google-auth-library' is used to interact with Google's OAuth2 services.
+  // It's configured with the Google Client ID.
+  const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
   try {
-    // 1. Token Exchange
+    // 1. Token Exchange: Exchange the authorization code for Google's access and ID tokens.
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -114,33 +158,37 @@ export async function GET(request: NextRequest) {
     if (!tokenResponse.ok) {
       const errorBody = await tokenResponse.json();
       console.error('Google token exchange failed:', errorBody);
-      return NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=TokenExchangeFailed`, { status: 302 });
+      const errorResponse = NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=TokenExchangeFailed`, { status: 302 });
+      errorResponse.headers.append('Set-Cookie', clearStateCookie);
+      return errorResponse;
     }
 
     const googleTokens = await tokenResponse.json() as GoogleTokenResponse;
 
-    // 2. Decode ID Token to get user info (basic, without full signature verification here)
-    // For production, MUST verify the id_token signature using google-auth-library or fetching Google's public keys.
-    // Here, we are trusting the token received directly from Google over HTTPS.
-    const idTokenPayload = jwt.decode(googleTokens.id_token) as GoogleIdTokenPayload;
+    // 2. Verify ID Token: Use 'google-auth-library' to verify the signature and claims of the ID token.
+    // This is a critical security step to ensure the token is authentic, issued by Google,
+    // intended for this application (audience check), and not expired.
+    // The library handles fetching Google's public keys for signature verification.
+    const ticket = await client.verifyIdToken({
+      idToken: googleTokens.id_token, // The ID token received from Google
+      audience: GOOGLE_CLIENT_ID,     // The application's Google Client ID
+    });
+    const idTokenPayload = ticket.getPayload(); // Contains verified claims like sub, email, name, etc.
 
+    // Ensure the payload was successfully retrieved and contains essential user identifiers.
     if (!idTokenPayload || !idTokenPayload.sub || !idTokenPayload.email) {
-      console.error('Failed to decode ID token or missing essential claims.');
-      return NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=InvalidIdToken`, { status: 302 });
+      console.error('Failed to verify ID token or missing essential claims from payload.');
+      const errorResponse = NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=InvalidIdToken`, { status: 302 });
+      errorResponse.headers.append('Set-Cookie', clearStateCookie);
+      return errorResponse;
     }
 
-    // Verify audience claim (aud) matches your GOOGLE_CLIENT_ID
-    if (idTokenPayload.aud !== GOOGLE_CLIENT_ID) {
-        console.error('ID token audience mismatch.');
-        return NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=TokenAudienceMismatch`, { status: 302 });
-    }
-
-    // Verify issuer claim (iss)
-    if (idTokenPayload.iss !== 'https://accounts.google.com' && idTokenPayload.iss !== 'accounts.google.com') {
-        console.error('ID token issuer mismatch.');
-        return NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=TokenIssuerMismatch`, { status: 302 });
-    }
-
+    // Note: `client.verifyIdToken` automatically checks critical claims:
+    // - 'aud' (audience): Matches GOOGLE_CLIENT_ID.
+    // - 'iss' (issuer): Is 'https://accounts.google.com' or 'accounts.google.com'.
+    // - 'exp' (expiration time): Token is not expired.
+    // - 'iat' (issued at time): Token is not used before it's valid.
+    // Therefore, manual checks for these claims are no longer necessary.
 
     const googleUserId = idTokenPayload.sub;
     const userEmail = idTokenPayload.email;
@@ -205,7 +253,9 @@ export async function GET(request: NextRequest) {
 
     // 4. Generate application tokens, create session, set cookies
     const response = NextResponse.redirect(NEXT_PUBLIC_APP_URL || '/', { status: 302 }); // Redirect to home or dashboard
-    await setAppCookiesAndSession(appUser, response);
+    await setAppCookiesAndSession(appUser, response); // This function now handles hashing the app refresh token
+    // Ensure the CSRF state cookie is cleared on successful authentication path
+    response.headers.append('Set-Cookie', clearStateCookie);
 
     return response;
 
@@ -217,6 +267,8 @@ export async function GET(request: NextRequest) {
     } else {
         redirectUrl.searchParams.set('error', 'UnknownError');
     }
-    return NextResponse.redirect(redirectUrl.toString(), { status: 302 });
+    const errorResponse = NextResponse.redirect(redirectUrl.toString(), { status: 302 });
+    errorResponse.headers.append('Set-Cookie', clearStateCookie);
+    return errorResponse;
   }
 }
