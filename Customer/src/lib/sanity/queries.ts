@@ -81,6 +81,41 @@ export const GET_PRODUCT_BY_SLUG_QUERY = `
   }
 `;
 
+export const SEARCH_PRODUCTS_QUERY = `
+  query SearchProducts($query: String!, $limit: Int = 20) {
+    allProduct(
+      where: {
+        _or: [
+          { name: { matches: $query } },
+          { excerpt: { matches: $query } }
+          // Note: Searching within 'tags' array directly in GraphQL can be limited.
+          // A GROQ query might be more effective if tags array search is critical.
+          // For now, this query focuses on name and excerpt.
+        ],
+        status: { eq: "active" }
+      },
+      limit: $limit,
+      sort: {_score: DESC} // If Sanity GraphQL supports sorting by relevance score
+    ) {
+      _id
+      name
+      slug { current }
+      price
+      salePrice
+      mainImage {
+        asset {
+          _id // Ensure _id is fetched for image asset
+          url
+          metadata { dimensions { width, height } }
+        }
+        alt
+      }
+      excerpt
+      categories[]->{_id, name, slug{current}} // Fetch category _id too
+    }
+  }
+`;
+
 // Query for products by category slug, including category details
 export const GET_PRODUCTS_BY_CATEGORY_SLUG_QUERY = `
   query GetProductsByCategorySlug($categorySlug: String!, $limit: Int = 10, $offset: Int = 0) {

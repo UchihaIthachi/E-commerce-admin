@@ -11,7 +11,8 @@ import {
   GET_ALL_CATEGORIES_QUERY,
   GET_CATEGORY_BY_SLUG_QUERY,
   GET_ALL_SUBCATEGORIES_QUERY,
-  GET_ALL_ACTIVE_PRODUCTS_FOR_SITEMAP_QUERY, // Added import
+  GET_ALL_ACTIVE_PRODUCTS_FOR_SITEMAP_QUERY,
+  SEARCH_PRODUCTS_QUERY, // Added import
 } from './queries';
 
 // --- TypeScript Interfaces (Basic versions based on queries) ---
@@ -196,6 +197,39 @@ export async function getFeaturedProducts(limit: number = 4): Promise<Product[]>
     return result?.allProduct || [];
   } catch (error) {
     console.error('Error fetching featured products:', error);
+    return [];
+  }
+}
+
+/**
+ * Searches for products based on a query string.
+ * Targets product name and excerpt.
+ */
+export async function searchProducts(query: string, limit: number = 20): Promise<Product[]> {
+  if (!projectId || !dataset || !query.trim()) return [];
+  try {
+    // Try with GraphQL first
+    const result = await sanityClient.fetch<{ allProduct: Product[] }>(
+      SEARCH_PRODUCTS_QUERY,
+      { query: `*${query}*`, limit } // Using wildcards for broader match; specific syntax might vary
+    );
+    let products = result?.allProduct || [];
+
+    // Fallback or alternative: If GraphQL is not effective, especially for tags or more complex full-text,
+    // a GROQ query could be used here. This is a more advanced step.
+    // Example GROQ (not implemented in this step, just for illustration):
+    // if (products.length === 0) { // Or if specific criteria aren't met by GraphQL
+    //   const groqQuery = `*[_type == "product" && status == "active" && (name match $query || excerpt match $query || brand match $query || $query in tags)][0...$limit]{
+    //     _id, name, "slug": slug.current, price, salePrice, excerpt, "mainImage": mainImage{asset->{_id, url, metadata{dimensions{width,height}}}, alt},
+    //     "categories": categories[]->{_id, name, "slug": slug.current}
+    //   }`;
+    //   const groqResult = await sanityClient.fetch<Product[]>(groqQuery, { query: `*${query}*`, limit });
+    //   products = groqResult || [];
+    // }
+
+    return products;
+  } catch (error) {
+    console.error(`Error searching products for query "${query}":`, error);
     return [];
   }
 }

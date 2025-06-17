@@ -4,6 +4,7 @@
 import React from 'react';
 import { useCartStore } from '@/store/useCartStore';
 import type { CartItemType, AddToCartPayload } from '@/store/useCartStore'; // Import types
+import { useAuth } from '@/context/AuthContext'; // Added
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -18,38 +19,52 @@ export default function CartPage() {
     addToCart,
     removeFromCart,
     deleteFromCart,
-    clearCart
+    clearCart,
+    // syncCartToDb // Not needed directly from useCartStore(), will use useCartStore.getState().syncCartToDb()
   } = useCartStore();
+  const { isAuthenticated } = useAuth(); // Added
 
   const handleIncreaseQuantity = (item: CartItemType) => {
-    // Construct the payload required by the addToCart action
-    // Note: item.price in CartItemType is already item.unitPrice * item.quantity
-    // The store's addToCart expects the unit price for the item being added.
-    const unitPrice = item.quantity > 0 ? item.price / item.quantity : 0; // Avoid division by zero
-    const unitOriginalPrice = item.quantity > 0 ? item.originalPrice / item.quantity : 0;
-
-
+    // Assuming item.price from CartItemType IS ALREADY unit price
     const payload: AddToCartPayload = {
       productId: item.productId,
       name: item.name,
       slug: item.slug,
-      price: unitPrice,
-      originalPrice: unitOriginalPrice,
+      price: item.price, // Pass unit price directly
+      originalPrice: item.originalPrice, // Pass unit originalPrice directly
       imageUrl: item.imageUrl,
       imageAlt: item.imageAlt,
       variantId: item.variantId,
       variantName: item.variantName,
     };
     addToCart(payload);
+    if (isAuthenticated) {
+      useCartStore.getState().syncCartToDb();
+    }
   };
 
   const handleDecreaseQuantity = (cartItemId: string) => {
     removeFromCart(cartItemId);
+    if (isAuthenticated) {
+      useCartStore.getState().syncCartToDb();
+    }
   };
 
   const handleDeleteItem = (cartItemId: string) => {
     deleteFromCart(cartItemId);
+    if (isAuthenticated) {
+      useCartStore.getState().syncCartToDb();
+    }
   };
+
+  const handleClearCart = () => {
+    if(confirm('Are you sure you want to clear the cart?')) {
+        clearCart();
+        if (isAuthenticated) {
+            useCartStore.getState().syncCartToDb();
+        }
+    }
+  }
 
   if (cart.length === 0) {
     return (
@@ -93,8 +108,8 @@ export default function CartPage() {
                         <p className="mt-1 text-xs text-gray-500">{item.variantName}</p>
                       )}
                       <p className="mt-1 text-sm font-semibold text-gray-900">
-                        {/* Display unit price. item.price is total for this line item. */}
-                        ₹{(item.quantity > 0 ? item.price / item.quantity : 0).toFixed(2)}
+                        {/* Display unit price. item.price from store is unit price. */}
+                        ₹{item.price.toFixed(2)}
                       </p>
                     </div>
 
@@ -121,7 +136,8 @@ export default function CartPage() {
                     </div>
                   </div>
                   <p className="mt-4 flex items-end justify-end space-x-2 text-sm font-medium text-gray-900">
-                    <span>Subtotal: ₹{item.price.toFixed(2)}</span> {/* item.price is already item.unitPrice * item.quantity */}
+                    {/* Subtotal for the line item: unit price * quantity */}
+                    <span>Subtotal: ₹{(item.price * item.quantity).toFixed(2)}</span>
                   </p>
                 </div>
               </li>
@@ -151,7 +167,7 @@ export default function CartPage() {
             </Button>
           </div>
           <div className="mt-4 text-center">
-            <Button variant="outline" onClick={() => { if(confirm('Are you sure you want to clear the cart?')) clearCart(); }} className="text-sm text-red-600 hover:text-red-700 border-red-300 hover:bg-red-50">
+            <Button variant="outline" onClick={handleClearCart} className="text-sm text-red-600 hover:text-red-700 border-red-300 hover:bg-red-50">
               Clear Cart
             </Button>
           </div>

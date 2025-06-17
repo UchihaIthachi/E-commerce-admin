@@ -136,8 +136,52 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const originalPrice = product.price;
   const onSale = product.salePrice != null && product.salePrice < product.price;
 
+  // Helper function to extract plain text from Portable Text (basic version)
+  const getPlainTextFromPortableText = (portableText: SanityPortableText | undefined): string => {
+    if (!portableText) return '';
+    return portableText
+      .filter(block => block._type === 'block' && block.children)
+      .map(block => block.children.map(span => span.text).join(''))
+      .join('\n\n') // Join paragraphs with double newline
+      .substring(0, 250); // Limit length for description
+  };
+
+  const mainImageUrl = product.mainImage?.asset ? urlForImage(product.mainImage).url() : undefined;
+
+  const productJsonLd = {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    "name": product.name,
+    "description": product.excerpt || getPlainTextFromPortableText(product.descriptionRaw) || `View details for ${product.name}`,
+    "image": mainImageUrl,
+    "sku": product.sku || undefined,
+    "brand": product.brand ? { "@type": "Brand", "name": product.brand } : undefined,
+    "offers": {
+      "@type": "Offer",
+      "url": `${process.env.NEXT_PUBLIC_APP_URL}/product/${product.slug.current}`,
+      "priceCurrency": "INR",
+      "price": displayPrice.toFixed(2),
+      "availability": (product.variants && product.variants.length > 0 ?
+                        product.variants.some(v => v.stockQuantity > 0) :
+                        (product.stockQuantity != null && product.stockQuantity > 0))
+                      ? "https://schema.org/InStock"
+                      : "https://schema.org/OutOfStock",
+      "priceValidUntil": new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
+    },
+    // Example: AggregateRating and Review can be added if data is available
+    // "aggregateRating": product.rating ? {
+    //   "@type": "AggregateRating",
+    //   "ratingValue": product.rating.average, // Assuming you have this structure
+    //   "reviewCount": product.rating.count
+    // } : undefined,
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 md:py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
       <div className="grid md:grid-cols-2 gap-x-8 gap-y-8 lg:gap-x-12">
         {/* Image Gallery Section */}
         <div className="space-y-4">

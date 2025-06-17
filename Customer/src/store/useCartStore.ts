@@ -49,6 +49,8 @@ export type Actions = {
   removeFromCart: (cartItemId: string) => void; // Takes cartItemId
   deleteFromCart: (cartItemId: string) => void; // Takes cartItemId
   clearCart: () => void;
+  setCart: (newCartItems: CartItemType[]) => void; // New action
+  syncCartToDb: () => Promise<void>; // New async action
   // Potentially hydrate cart from DB for logged-in users, etc.
 };
 
@@ -135,6 +137,47 @@ export const useCartStore = create(
         clearCart: () => {
           const totals = recalculateTotals([]);
           set({ cart: [], ...totals }); // Also explicitly set totals to 0 via recalculate
+        },
+
+        setCart: (newCartItems: CartItemType[]) => {
+          const totals = recalculateTotals(newCartItems);
+          set({ cart: newCartItems, ...totals, });
+          // console.log("Cart hydrated from DB:", newCartItems);
+        },
+
+        syncCartToDb: async () => {
+          const currentCart = get().cart;
+          // Map CartItemType to the structure expected by ClientCartItemSchema for the API
+          const itemsForApi = currentCart.map(item => ({
+            productId: item.productId,
+            name: item.name,
+            // slug: item.slug, // Not in ClientCartItemSchema
+            price: item.price, // Assumed to be unit price in CartItemType
+            // originalPrice: item.originalPrice, // Not in ClientCartItemSchema
+            imageUrl: item.imageUrl,
+            imageAlt: item.imageAlt, // Not in ClientCartItemSchema, but API might ignore extra fields
+            quantity: item.quantity,
+            variantId: item.variantId,
+            variantName: item.variantName,
+          }));
+
+          try {
+            const response = await fetch('/api/cart', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: itemsForApi }), // API expects { items: ... }
+            });
+            if (!response.ok) {
+              const errorData = await response.json().catch(()=> ({})); // Catch if response is not JSON
+              console.error("Failed to sync cart to DB:", response.status, errorData.error || response.statusText);
+              // Optionally, set an error state in the store here
+            } else {
+              // console.log("Cart synced to DB successfully.");
+            }
+          } catch (error) {
+            console.error("Error syncing cart to DB:", error);
+            // Optionally, set an error state in the store here
+          }
         },
       };
     },

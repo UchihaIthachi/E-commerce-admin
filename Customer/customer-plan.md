@@ -197,14 +197,37 @@ This document outlines a detailed strategic plan for developing and enhancing th
     *   Provides links for users to continue shopping or navigate to their (future) order history page.
 
 ### Phase 4: Full Account Management
-1.  **Address Management:** API and UI for adding/editing/deleting addresses.
-2.  **Order History:** API and UI for listing orders and viewing order details.
+1.  **Address Management:** (Completed)
+    *   **API:** Implemented API routes under `Customer/src/app/api/account/addresses/` for full CRUD operations (GET all, POST new, GET single, PUT update, DELETE single) and a dedicated PATCH route to set a primary address. Features include Zod validation for request payloads, user authentication, ownership checks for address manipulation, and transactional updates for ensuring a single primary address.
+    *   **UI:** Developed the address management page at `Customer/src/app/account/addresses/page.tsx`. This page allows authenticated users to view their list of saved addresses, add new addresses through a form, edit existing ones, delete addresses (with confirmation), and set one address as their primary. The UI provides feedback on these operations.
+2.  **Order History:** (Completed)
+    *   **API:** Implemented API routes under `Customer/src/app/api/account/orders/`.
+        *   The `GET /api/account/orders` route provides a paginated list of orders for the authenticated user, including essential details like order ID, date, total amount (calculated from cents to float), item count, and statuses.
+        *   The `GET /api/account/orders/[orderId]` route provides detailed information for a specific order, verifying user ownership. This includes all order items (with prices converted from cents), shipping address, and various statuses.
+    *   **UI:**
+        *   Developed the order history listing page at `Customer/src/app/account/orders/page.tsx`. This page fetches and displays the paginated list of orders in a table, with links to individual order detail pages and pagination controls. Statuses are visually distinguished using badges.
+        *   Developed the dynamic order detail page at `Customer/src/app/account/orders/[orderId]/page.tsx`. This page fetches and displays comprehensive details for a specific order, including item images, names, quantities, prices, shipping information, and order/payment/delivery statuses.
 
 ### Phase 5: Advanced Features & UX Optimizations
-1.  **Advanced SEO:** JSON-LD with `next-seo`.
-2.  **Persistent Cart:** API for DB-backed cart for logged-in users.
-3.  **Search Functionality:** Basic product search.
-4.  **Analytics Integration.**
+1.  **Basic Product Search Functionality:** (Completed)
+    *   **API:** Implemented an API route (`Customer/src/app/api/products/search/route.ts`) that queries Sanity for products matching a search term (targets product `name` and `excerpt`). Includes Zod validation for search parameters.
+    *   **Sanity Client:** Updated `Customer/src/lib/sanity/client.ts` and `queries.ts` with search-specific functions and GraphQL queries.
+    *   **UI:** Developed the search results page (`Customer/src/app/search/page.tsx`) which includes a search input form. The page fetches results from the API, displays them using `ProductCard` components, and handles loading, error, and no-results states. URL query parameters are used for managing search terms.
+2.  **Advanced SEO with JSON-LD:** (Completed)
+    *   Implemented JSON-LD structured data snippets manually within page components to enhance SEO:
+        *   Added `Product` schema JSON-LD to Product Detail Pages (`Customer/src/app/product/[slug]/page.tsx`), including dynamic fields like name, description, image, SKU, brand, and offers (with price, currency, availability).
+        *   Added `BreadcrumbList` schema JSON-LD to Category Pages (`Customer/src/app/category/[slug]/page.tsx`) to define navigation hierarchy.
+        *   Added `Organization` and `WebSite` (including `SearchAction` for Sitelinks Search Box potential) schema JSON-LD to the Home Page (`Customer/src/app/page.tsx`).
+3.  **Persistent Cart (Database-backed for logged-in users):** (Completed)
+    *   **API (`Customer/src/app/api/cart/route.ts`):**
+        *   `GET` endpoint: Fetches an authenticated user's cart from Prisma, maps DB `CartItem`s to client-side `CartItemType` (includes price conversion from cents, `cartItemId` generation).
+        *   `POST` endpoint: Syncs a client's cart to Prisma for an authenticated user. Uses a transaction to delete old cart items and create new ones (includes price conversion to cents for DB). Validates input with Zod.
+    *   **Client-Side Integration:**
+        *   `useCartStore.ts`: Added `setCart` action (for hydrating store from DB) and `syncCartToDb` async action (to POST cart to API). Assumes unit prices are stored in Zustand `CartItemType.price`.
+        *   `AuthContext.tsx`: Modified to call `fetchAndSetDbCart` (which uses the GET cart API and `setCart`) upon user login or session verification. Clears local cart on logout.
+        *   UI components (e.g., `CartPage.tsx`) updated to call `syncCartToDb` after local cart modifications if the user is authenticated.
+4.  **Analytics Integration:** (Deferred)
+    *   Initial strategy discussion was prepared, but implementation has been deferred based on user request. This task can be revisited later.
 
 ### Future Phases:
 -   AI/ML Powered Search & Recommendations.

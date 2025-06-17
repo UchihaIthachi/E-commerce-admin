@@ -66,11 +66,36 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   // the API might need to return total product count for the category.
   const hasMoreProducts = products.length === productsPerPage;
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": `${appUrl}/`
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": categoryDetails.name,
+        "item": `${appUrl}/category/${slug}`
+      }
+    ]
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <header className="mb-8">
-        <h1 className="mb-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+    <> {/* Root fragment to hold JSON-LD script and page content */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <div className="container mx-auto px-4 py-8">
+        <header className="mb-8">
+          <h1 className="mb-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
           {categoryDetails.name}
         </h1>
         {categoryDetails.description && (
@@ -109,6 +134,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
         )}
       </div>
     </div>
+  </>
   );
 }
 

@@ -39,12 +39,54 @@ export default async function Home() {
     // Optionally, render a specific error message or fallback UI
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || 'Your E-commerce Site'; // Example, use actual env var if set
+  const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || siteName; // Can be same as site or specific company
+  const logoUrl = `${appUrl}/icons/logo-seo.png`; // Adjust path as needed, ensure this logo exists
+
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": companyName,
+    "url": appUrl,
+    "logo": logoUrl,
+    // "sameAs": [ // Optional: Links to social media profiles
+    //   "https://www.facebook.com/yourcompany",
+    //   "https://www.twitter.com/yourcompany",
+    // ]
+  };
+
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": siteName,
+    "url": appUrl,
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": `${appUrl}/search?q={search_term_string}`
+      },
+      "query-input": "required name=search_term_string"
+    }
+  };
+
   return (
-    <main className=""> {/* Removed px-2 from main, assuming container in section or page root handles padding */}
-      <Billboard />
-      <ProductMarquee />
-      <FeaturedProductsSection products={featuredProducts} />
-      <CategoryCardSection />
-    </main>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
+      <main className=""> {/* Removed px-2 from main, assuming container in section or page root handles padding */}
+        <Billboard />
+        <ProductMarquee />
+        <FeaturedProductsSection products={featuredProducts} />
+        <CategoryCardSection />
+      </main>
+    </>
   );
 }

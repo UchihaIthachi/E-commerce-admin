@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation'; // For potential redirects
+import { useCartStore } from '@/store/useCartStore'; // Import cart store
+import type { CartItemType } from '@/store/useCartStore'; // Import type for cart items
 
 // 1. Define User Type
 export interface User {
@@ -52,37 +54,73 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const data = await response.json();
         if (data.user) {
           setUser(data.user);
+          await fetchAndSetDbCart(); // Fetch cart after setting user
         } else {
           setUser(null); // No user in session
+          useCartStore.getState().setCart([]); // Clear cart if no user session
         }
       } else if (response.status === 401) {
         setUser(null); // Unauthorized, no active session
+        useCartStore.getState().setCart([]); // Clear cart on 401
       } else {
         // Other non-OK responses
         const errorData = await response.json().catch(() => ({ error: "Failed to fetch session" }));
         setError(errorData.error || 'Failed to fetch session');
         setUser(null);
+        useCartStore.getState().setCart([]); // Clear cart on other errors too
       }
     } catch (err) {
       console.error("checkSession error:", err);
       setError('An error occurred while checking session.');
       setUser(null);
+      useCartStore.getState().setCart([]); // Clear cart on catch
     } finally {
       setIsLoading(false);
     }
-  }, [clearError]);
+  }, [clearError, fetchAndSetDbCart]); // Added fetchAndSetDbCart
 
   // Initial session check on mount
   useEffect(() => {
     checkSession();
   }, [checkSession]);
 
+  // Function to fetch DB cart and set it to Zustand store
+  const fetchAndSetDbCart = useCallback(async () => {
+    // console.log("Attempting to fetch DB cart...");
+    try {
+      const response = await fetch('/api/cart'); // GET request
+      if (response.ok) {
+        const data = await response.json(); // Expects { cart: CartItemType[] }
+        if (data && Array.isArray(data.cart)) {
+          useCartStore.getState().setCart(data.cart as CartItemType[]);
+          // console.log("DB cart fetched and set to Zustand store:", data.cart);
+        } else {
+          // This case means API returned 200 OK but cart data is not as expected (e.g. {cart: []} is fine)
+          // console.warn("Fetched DB cart, but data format is unexpected:", data);
+          useCartStore.getState().setCart([]); // Ensure cart is empty if data is malformed
+        }
+      } else if (response.status !== 401) {
+        // Don't treat 401 as an error for cart fetching, it just means user is not logged in
+        // or has no persistent cart, which is fine (local cart will be used or new cart created).
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Failed to fetch DB cart, status:", response.status, errorData.error || response.statusText);
+      } else {
+        // console.log("No persistent cart found for user (401) or user not logged in.");
+        // Optionally, ensure local cart is cleared if a 401 implies session ended elsewhere
+        // useCartStore.getState().setCart([]); // Or handle based on specific app logic for 401 on cart fetch
+      }
+    } catch (error) {
+      console.error("Error during fetchAndSetDbCart:", error);
+    }
+  }, []); // Empty dependency array: fetch and setCart are stable references from Zustand/built-in
+
   // Login function (primarily updates client state; actual login happens via API routes)
-  const login = useCallback((userData: User) => {
+  const login = useCallback(async (userData: User) => { // Made async
     setUser(userData);
-    setIsLoading(false); // Ensure loading is false after login state update
+    setIsLoading(false);
     clearError();
-  }, [clearError]);
+    await fetchAndSetDbCart(); // Fetch cart after login
+  }, [clearError, fetchAndSetDbCart]);
 
   // Logout function
   const logout = useCallback(async () => {
@@ -91,23 +129,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await fetch('/api/auth/logout', { method: 'POST' });
       if (!response.ok) {
-        // Try to parse error, but still logout client-side
         const errorData = await response.json().catch(() => ({ error: "Logout failed on server" }));
         console.error("Server logout error:", errorData.error);
-        // Don't necessarily set global error here, as client-side logout will proceed
       }
     } catch (err) {
       console.error("Logout API call error:", err);
-      // Don't necessarily set global error here
     } finally {
       setUser(null);
-      // Cookies are cleared by the server. Client-side cannot reliably clear HttpOnly cookies.
-      // Forcing a reload or redirect might help ensure client state is fully reset.
-      // router.push('/sign-in'); // Example redirect
+      useCartStore.getState().clearCart(); // Clear Zustand cart on logout
+      // Cookies are cleared by the server.
       setIsLoading(false);
-      // Optionally, call checkSession() again to confirm logout with server, though usually not needed.
     }
-  }, [clearError /*, router */]);
+  }, [clearError]);
 
   const isAuthenticated = !!user;
 
