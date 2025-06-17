@@ -5,6 +5,7 @@ import { refreshTokenLimiter, getClientIp, consumeLimiter } from '@/lib/rate-lim
 import bcrypt from 'bcryptjs';
 import { serialize } from 'cookie';
 import { parse } from 'cookie'; // To parse incoming cookies
+import { log } from '@/server/application/common/services/logging';
 
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
     try {
       decodedRefreshToken = jwt.verify(refreshTokenFromCookie, JWT_REFRESH_SECRET) as { userId: string; email: string; iat: number; exp: number };
     } catch (error) {
+      log('WARNING', `Invalid or expired refresh token attempt. Error: ${error instanceof Error ? error.message : String(error)}`);
       // Clear potentially invalid refresh token cookie
       const clearRefreshTokenCookie = serialize('refresh_token', '', {
         httpOnly: true,
@@ -66,6 +68,7 @@ export async function POST(request: NextRequest) {
 
     // If no active sessions are found for the user, the token is invalid or has been revoked.
     if (!userSessions || userSessions.length === 0) {
+      log('WARNING', `No active session found for refresh token for userId: ${decodedRefreshToken?.userId}`);
       const clearRefreshTokenCookie = serialize('refresh_token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/api/auth', expires: new Date(0) });
       const headers = new Headers();
       headers.append('Set-Cookie', clearRefreshTokenCookie);
@@ -94,6 +97,7 @@ export async function POST(request: NextRequest) {
 
     // If no session produced a match, the provided refresh token is invalid or revoked.
     if (!validSession) {
+      log('WARNING', `Refresh token session not found or revoked for userId: ${decodedRefreshToken?.userId}`);
       const clearRefreshTokenCookie = serialize('refresh_token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/api/auth', expires: new Date(0) });
       const headers = new Headers();
       headers.append('Set-Cookie', clearRefreshTokenCookie);
@@ -162,6 +166,7 @@ export async function POST(request: NextRequest) {
     headers.append('Set-Cookie', accessTokenCookie);
     headers.append('Set-Cookie', newRefreshTokenCookie);
 
+    log('INFO', `Token refreshed for userId: ${user.id}`);
     // 7. Return the new access token
     return NextResponse.json({
       message: 'Token refreshed successfully',
@@ -169,7 +174,7 @@ export async function POST(request: NextRequest) {
     }, { status: 200, headers });
 
   } catch (error) {
-    console.error('Refresh token error:', error);
+    log('SEVERE', `Refresh token error: ${error instanceof Error ? error.message : String(error)}`);
     // Fallback for unexpected errors
     const clearRefreshTokenCookie = serialize('refresh_token', '', { // Attempt to clear cookie on error
         httpOnly: true,

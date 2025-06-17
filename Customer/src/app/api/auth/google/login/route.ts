@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serialize } from 'cookie';
 import crypto from 'crypto';
+import { log } from '@/server/application/common/services/logging';
 
 export async function GET(request: NextRequest) {
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
   const nextPublicAppUrl = process.env.NEXT_PUBLIC_APP_URL;
 
   if (!googleClientId || !nextPublicAppUrl) {
-    console.error('Google OAuth configuration is missing in environment variables.');
+    log('SEVERE', 'Google OAuth configuration (GOOGLE_CLIENT_ID or NEXT_PUBLIC_APP_URL) is missing in environment variables.');
     return NextResponse.json({ error: 'Server configuration error for Google OAuth.' }, { status: 500 });
   }
 
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
 
   const googleOAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
+  log('INFO', `Redirecting to Google OAuth for client: ${request.ip || 'unknown'}`);
   // Redirect the user to Google's OAuth consent screen
   const response = NextResponse.redirect(googleOAuthUrl, 302);
   response.headers.set('Set-Cookie', stateCookie);

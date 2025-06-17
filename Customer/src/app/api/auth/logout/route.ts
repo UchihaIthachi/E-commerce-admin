@@ -10,7 +10,7 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
 export async function POST(request: NextRequest) {
   if (!JWT_ACCESS_SECRET || !JWT_REFRESH_SECRET) {
-    log('SEVERE', 'JWT secrets are not configured.');
+    log('SEVERE', 'JWT secrets are not configured for logout route.');
     // Clear cookies even if secrets are missing, then return error
     const clearHeaders = getClearCookieHeaders();
     return NextResponse.json({ error: 'Server configuration error.' }, { status: 500, headers: clearHeaders });
@@ -34,11 +34,11 @@ export async function POST(request: NextRequest) {
           await prisma.session.deleteMany({
             where: { userId: userIdFromToken },
           });
-          log('INFO', `All sessions invalidated for userId: ${userIdFromToken} via access token.`);
+          log('INFO', `All sessions invalidated for userId: ${userIdFromToken} via access token during logout.`);
           sessionInvalidated = true;
         }
       } catch (jwtError: any) {
-        log('WARN', `Access token verification failed during logout: ${jwtError.message}. Proceeding with refresh token if available.`);
+        log('WARNING', `Access token verification failed during logout: ${jwtError instanceof Error ? jwtError.message : String(jwtError)}. Proceeding with refresh token if available.`);
         // If access token is invalid (e.g., expired), don't throw, try refresh token
       }
     }
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
               await prisma.session.delete({
                 where: { id: session.id },
               });
-              log('INFO', `Specific session ${session.id} invalidated for userId: ${userIdFromToken} via refresh token.`);
+              log('INFO', `Specific session ${session.id} invalidated for userId: ${userIdFromToken} via refresh token during logout.`);
               specificSessionDeleted = true;
               break; // Found and deleted the matching session
             }
@@ -76,11 +76,11 @@ export async function POST(request: NextRequest) {
           if (specificSessionDeleted) {
             sessionInvalidated = true;
           } else {
-            log('WARN', `No session found matching the provided refresh token for userId: ${userIdFromToken}, though token was valid.`);
+            log('WARNING', `No session found matching the provided refresh token for userId: ${userIdFromToken} during logout, though token was valid.`);
           }
         }
       } catch (jwtError: any) {
-        log('WARN', `Refresh token verification failed during logout: ${jwtError.message}.`);
+        log('WARNING', `Refresh token verification failed during logout: ${jwtError instanceof Error ? jwtError.message : String(jwtError)}.`);
         // If refresh token is invalid, just proceed to clear cookies
       }
     }
@@ -98,10 +98,11 @@ export async function POST(request: NextRequest) {
 
     // 3. Clear Cookies
     const clearHeaders = getClearCookieHeaders();
+    log('INFO', `Logout successful for user associated with IP: ${request.ip || 'unknown'}. Cookies cleared.`);
     return NextResponse.json({ message: 'Logout successful' }, { status: 200, headers: clearHeaders });
 
   } catch (error: any) {
-    log('SEVERE', `Logout error: ${error.message}`, error);
+    log('SEVERE', `Logout error: ${error instanceof Error ? error.message : String(error)}`);
     const clearHeaders = getClearCookieHeaders(); // Attempt to clear cookies even on server error
     return NextResponse.json({ error: 'Internal server error during logout' }, { status: 500, headers: clearHeaders });
   }

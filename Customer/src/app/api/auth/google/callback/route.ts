@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken'; // For our app's tokens
 import { OAuth2Client } from 'google-auth-library';
 import { serialize, parse } from 'cookie'; // For setting our app's cookies
 import bcrypt from 'bcryptjs';
-import { Role } // Assuming Role enum is available from Prisma client
+import { Role } from '@prisma/client'; // Assuming Role enum is available from Prisma client
+import { log } from '@/server/application/common/services/logging';
 
 // Environment variables
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -113,7 +114,7 @@ export async function GET(request: NextRequest) {
   // CSRF Protection: Validate the state parameter.
   // This ensures the OAuth flow was initiated by this application and not an attacker.
   if (!callbackState || !storedState || callbackState !== storedState) {
-    console.error('Invalid OAuth state:', { callbackState, storedState });
+    log('SEVERE', `Invalid OAuth state. Callback: ${callbackState}, Stored: ${storedState}`);
     const errorRedirectUrl = new URL(`${NEXT_PUBLIC_APP_URL}/auth/error?error=InvalidStateParameter`);
     const errorResponse = NextResponse.redirect(errorRedirectUrl.toString(), { status: 302 });
     errorResponse.headers.append('Set-Cookie', clearStateCookie);
@@ -123,13 +124,14 @@ export async function GET(request: NextRequest) {
   // State is valid, proceed
   if (!code) {
     // This error case should also clear the state cookie
+    log('SEVERE', 'Google OAuth callback error: Missing authorization code.');
     const errorResponse = NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=MissingAuthorizationCode`, { status: 302 });
     errorResponse.headers.append('Set-Cookie', clearStateCookie);
     return errorResponse;
   }
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !NEXT_PUBLIC_APP_URL || !JWT_ACCESS_SECRET || !JWT_REFRESH_SECRET) {
-    console.error('Google OAuth or JWT configuration is missing.');
+    log('SEVERE', 'Google OAuth callback error: Google OAuth or JWT configuration is missing.');
     // This error case should also clear the state cookie
     const errorResponse = NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=ServerConfigurationError`, { status: 302 });
     errorResponse.headers.append('Set-Cookie', clearStateCookie);
@@ -157,7 +159,7 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResponse.ok) {
       const errorBody = await tokenResponse.json();
-      console.error('Google token exchange failed:', errorBody);
+      log('SEVERE', `Google OAuth callback error: Token exchange failed. Details: ${JSON.stringify(errorBody)}`);
       const errorResponse = NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=TokenExchangeFailed`, { status: 302 });
       errorResponse.headers.append('Set-Cookie', clearStateCookie);
       return errorResponse;
@@ -177,7 +179,7 @@ export async function GET(request: NextRequest) {
 
     // Ensure the payload was successfully retrieved and contains essential user identifiers.
     if (!idTokenPayload || !idTokenPayload.sub || !idTokenPayload.email) {
-      console.error('Failed to verify ID token or missing essential claims from payload.');
+      log('SEVERE', 'Google OAuth callback error: Failed to verify ID token or missing essential claims from payload.');
       const errorResponse = NextResponse.redirect(`${NEXT_PUBLIC_APP_URL}/auth/error?error=InvalidIdToken`, { status: 302 });
       errorResponse.headers.append('Set-Cookie', clearStateCookie);
       return errorResponse;
@@ -254,13 +256,15 @@ export async function GET(request: NextRequest) {
     // 4. Generate application tokens, create session, set cookies
     const response = NextResponse.redirect(NEXT_PUBLIC_APP_URL || '/', { status: 302 }); // Redirect to home or dashboard
     await setAppCookiesAndSession(appUser, response); // This function now handles hashing the app refresh token
+
+    log('INFO', `Google OAuth successful for email: ${appUser.email}`);
     // Ensure the CSRF state cookie is cleared on successful authentication path
     response.headers.append('Set-Cookie', clearStateCookie);
 
     return response;
 
   } catch (error) {
-    console.error('Google callback error:', error);
+    log('SEVERE', `Google callback error: ${error instanceof Error ? error.message : String(error)}`);
     const redirectUrl = new URL(`${NEXT_PUBLIC_APP_URL}/auth/error`);
     if (error instanceof Error) {
         redirectUrl.searchParams.set('error', error.message);

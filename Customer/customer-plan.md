@@ -131,24 +131,70 @@ This document outlines a detailed strategic plan for developing and enhancing th
 1.  **Custom Email/Password Auth API:** (Largely Implemented) Undergoing final review, hardening, and documentation. Includes refresh token mechanism.
 2.  **'Login with Google' API:** (Largely Implemented) Undergoing final review, hardening, and documentation.
 3.  **Frontend Auth Pages:** (Implemented) Sign-in, sign-up forms (including "Login with Google" button) are functional.
-4.  **Basic Profile Management:** (To be implemented) API and UI for viewing/editing basic user profile.
+4.  **Basic Profile Management:** (Verified Existing) API (`Customer/src/app/api/account/profile/route.ts`) and UI (`Customer/src/app/account/profile/page.tsx`) for viewing/editing basic user profile were found to be already implemented and functional.
 5.  **Remove/Refactor Clerk files:** (Completed) `Customer/src/app/sign-in` & `sign-up` use custom auth.
-6.  **Enhance server-side logout to reliably invalidate sessions.** (New Action Item) Focus on robust refresh token invalidation from `Session` table.
-7.  **Implement robust input validation (e.g., using Zod) for all auth API endpoints.** (New Action Item)
-8.  **Implement Rate Limiting for Auth Endpoints:** Apply rate limiting to sensitive authentication API routes (e.g., login, register, refresh, request-password-reset) to mitigate abuse. (New Action Item)
-9.  **Ensure comprehensive error handling and logging for auth flows.** (New Action Item)
-10. **Develop/verify client-side UI and state management for authentication (context, redirects, error display).** (New Action Item)
+6.  **Enhance server-side logout to reliably invalidate sessions.** (Verified Existing) Server-side logout at `Customer/src/app/api/auth/logout/route.ts` was verified to be robust, correctly invalidating sessions by comparing the cookie's refresh token with hashed tokens in the `Session` table.
+7.  **Implement robust input validation (e.g., using Zod) for all auth API endpoints.** (Verified Existing) Zod input validation was confirmed to be already implemented for all relevant auth API endpoints (`login`, `register`, `request-password-reset`, `reset-password`), using schemas from `@/lib/validators/auth-schemas.ts`.
+8.  **Implement Rate Limiting for Auth Endpoints:** (Verified Existing) Rate limiting was confirmed to be correctly implemented for `login`, `register`, `refresh`, and `request-password-reset` routes, using predefined limiters from `@/lib/rate-limiter.ts`.
+9.  **Ensure comprehensive error handling and logging for auth flows.** (Completed) Standardized and enhanced logging across all authentication API routes by ensuring consistent use of the `log(severity, message)` utility and adding specific log points for key events.
+10. **Develop/verify client-side UI and state management for authentication (context, redirects, error display).** (Largely Verified) Core client-side authentication components (`AuthContext`, sign-in, sign-up, middleware, request-password-reset page) were reviewed and found to be well-implemented, handling state, errors, and redirects correctly. Full verification of reset password token page and dynamic UI updates (e.g., header) was pending when focus shifted to Phase 2.
 
 ### Phase 2: Product Display & Sanity Integration
-1.  **GraphQL Queries for Sanity:** Define and implement queries for products, categories.
-2.  **Core Pages:** Home, Category, Product Detail pages with data from Sanity.
-3.  **SEO Foundation:** `generateMetadata` for core pages, `robots.ts`, `sitemap.ts`.
+
+**Prerequisite:** A new `product` schema has been designed and implemented in Sanity Studio (`Sanity-Studio/schemaTypes/product.schema.ts` and `size.schema.ts`). This schema provides a comprehensive structure for managing product details, including name, description, pricing, images, categories, variants (with color, size, stock), and SEO fields directly within Sanity. The following tasks will leverage this new product schema.
+
+1.  **Define and Implement Sanity GraphQL Queries:** (Completed)
+    *   Developed GraphQL queries to fetch product listings (e.g., for category pages, featured products).
+    *   Created queries for single product details, including all relevant fields from the `product` schema (description, variants, images, etc.).
+    *   Developed queries for category and subcategory information, including `_updatedAt` for sitemap generation.
+    *   Stored these queries in `Customer/src/lib/sanity/queries.ts`.
+2.  **Implement Data Fetching Logic in Customer App:** (Completed)
+    *   Created `Customer/src/lib/sanity/client.ts` to configure the Sanity client.
+    *   Implemented TypeScript interfaces for fetched data structures (Product, Category, etc.).
+    *   Developed data fetching functions corresponding to the GraphQL queries, with error handling.
+    *   Implemented `Customer/src/lib/sanity/image.ts` for building image URLs.
+3.  **Develop Core Product Display Pages:** (Completed)
+    *   **Home Page (`Customer/src/app/page.tsx`):** Enhanced to display featured products fetched from Sanity using `ProductCard`.
+    *   **Category Pages (`Customer/src/app/category/[slug]/page.tsx`):** Created dynamic pages that list products belonging to a specific category, using data from Sanity and `ProductCard`. Includes basic pagination.
+    *   **Product Detail Pages (`Customer/src/app/product/[slug]/page.tsx`):** Created dynamic pages to display detailed information for a single product, including its description, images, price, and other attributes from Sanity.
+    *   Leveraged existing `ProductCard.tsx` component, which was updated to use Sanity data.
+    *   *Note: Placeholders exist for full Portable Text rendering, functional variant selection UI, and add-to-cart logic on product detail pages. These are considered future enhancements within or beyond this phase.*
+4.  **Implement Basic SEO for Product & Category Pages:** (Completed)
+    *   Utilized Next.js `generateMetadata` function in `Customer/src/app/category/[slug]/page.tsx` and `Customer/src/app/product/[slug]/page.tsx` to dynamically set page titles, descriptions, and Open Graph metadata using data fetched from Sanity.
+    *   Updated `Customer/src/app/robots.ts` to point to the dynamic sitemap.
+    *   Implemented a dynamic `Customer/src/app/sitemap.ts` that includes URLs for static pages, all active products, and all categories, using `_updatedAt` for `lastModified` dates.
+5.  **(Optional - if time permits or as follow-up) Basic Product Search Functionality:** (Not Started)
+    *   Implement a simple search input that queries Sanity for products based on name or tags.
+    *   Display search results on a dedicated search results page.
 
 ### Phase 3: Cart & Basic Checkout
-1.  **Client-Side Cart:** Solidify `useCartStore.ts` functionality.
-2.  **Cart Display:** Implement `/cart` page or cart sheet.
-3.  **Checkout API (COD):** API route to create order in Prisma with Cash-On-Delivery.
-4.  **Basic Checkout UI:** Multi-step form for shipping, review, confirmation (COD).
+1.  **Client-Side Cart:** (Completed)
+    *   Reviewed and solidified `Customer/src/store/useCartStore.ts` (Zustand).
+    *   Refactored to use `CartItemType` with a composite `cartItemId` for variant handling, ensuring prices and totals are calculated correctly.
+    *   Implemented helper functions for total calculation and updated cart actions (`addToCart`, `removeFromCart`, `deleteFromCart`, `clearCart`).
+    *   Ensured cart state is persisted to localStorage.
+2.  **Cart Display:** (Completed)
+    *   Implemented the cart page at `Customer/src/app/cart/page.tsx`.
+    *   Displays items from `useCartStore` with details (image, name, price, quantity).
+    *   Allows users to update item quantities and remove items from the cart.
+    *   Shows cart subtotal and total amount, with a "Proceed to Checkout" button.
+    *   Handles the empty cart scenario gracefully.
+3.  **Checkout API (COD):** (Completed)
+    *   Implemented the order creation API route at `Customer/src/app/api/orders/create/route.ts`.
+    *   The API is authenticated and validates request payloads using Zod schemas.
+    *   It performs server-side verification of the total order amount.
+    *   Handles creation of new shipping addresses or uses existing ones (with ownership check).
+    *   Uses a Prisma transaction to create `Order`, `Delivery`, and associated `CartItem` records. Payment method is set to 'COD' and initial order/payment statuses are 'PENDING'. Prices in `CartItem` are stored in cents.
+4.  **Basic Checkout UI:** (Completed)
+    *   Developed a multi-step checkout page at `Customer/src/app/checkout/page.tsx`.
+    *   Steps include: 1. Shipping Address (new address entry, pre-fills some user data), 2. Shipping Method (placeholder) & Payment Method (COD only), 3. Order Review.
+    *   Integrates with `useAuth` for user data and `useCartStore` for cart details.
+    *   Includes client-side form validation and appropriate loading/error states.
+    *   Calls the order creation API and redirects to an order confirmation page upon success.
+5.  **Order Confirmation Page:** (Completed)
+    *   Implemented a dynamic order confirmation page at `Customer/src/app/order-confirmation/[orderId]/page.tsx`.
+    *   Displays a "Thank You" message and the `orderId` extracted from the URL.
+    *   Provides links for users to continue shopping or navigate to their (future) order history page.
 
 ### Phase 4: Full Account Management
 1.  **Address Management:** API and UI for adding/editing/deleting addresses.

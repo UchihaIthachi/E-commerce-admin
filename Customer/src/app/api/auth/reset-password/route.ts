@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/server/infrastructure/clients/prisma';
 import bcrypt from 'bcryptjs';
 import { ResetPasswordSchema } from '@/lib/validators/auth-schemas'; // Import Zod schema
+import { log } from '@/server/application/common/services/logging';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,10 +24,12 @@ export async function POST(request: NextRequest) {
 
     // 3. Validate the token
     if (!verificationToken) {
+      log('WARNING', `Password reset attempt with invalid token: ${token}`);
       return NextResponse.json({ error: 'Invalid or expired token' }, { status: 400 });
     }
 
     if (new Date(verificationToken.expires) < new Date()) {
+      log('WARNING', `Password reset attempt with expired token: ${token}`);
       // Token has expired, delete it
       await prisma.verificationToken.delete({ where: { token } });
       return NextResponse.json({ error: 'Invalid or expired token' }, { status: 400 });
@@ -70,11 +73,12 @@ export async function POST(request: NextRequest) {
       });
     });
 
+    log('INFO', `Password reset successful for user: ${userEmail}`);
     // 7. Return success response
     return NextResponse.json({ message: 'Password has been reset successfully' }, { status: 200 });
 
   } catch (error) {
-    console.error('Reset password error:', error);
+    log('SEVERE', `Reset password error: ${error instanceof Error ? error.message : String(error)}`);
     if (error instanceof SyntaxError) {
         return NextResponse.json({ error: 'Invalid JSON input' }, { status: 400 });
     }

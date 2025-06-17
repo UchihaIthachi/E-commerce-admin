@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { passwordResetLimiter, getClientIp, consumeLimiter } from '@/lib/rate-limiter'; // Import rate limiter
 import { RequestPasswordResetSchema } from '@/lib/validators/auth-schemas'; // Import Zod schema
 // import { sendPasswordResetEmail } from '@/lib/email'; // Placeholder for email sending
+import { log } from '@/server/application/common/services/logging';
 
 // Configuration for password reset token
 const PASSWORD_RESET_TOKEN_EXPIRES_IN_MS = 3600000; // 1 hour
@@ -17,10 +18,11 @@ export async function POST(request: NextRequest) {
   if (!isAllowed) {
     // Even if rate-limited, return a generic message to prevent revealing if an email/IP is being targeted.
     // Log the rate-limiting event server-side for monitoring.
-    console.warn(`Rate limit exceeded for password reset request from IP: ${clientIp}`);
+    log('WARNING', `Rate limit exceeded for password reset request from IP: ${clientIp}`);
     return NextResponse.json({ message: 'If your email is registered, you will receive a password reset link.' }, { status: 200 }); // status 429 would reveal IP is targeted
   }
 
+  let email: string | undefined = undefined; // Define email here to use in catch block if needed
   try {
     const rawBody = await request.json();
     const validationResult = RequestPasswordResetSchema.safeParse(rawBody);
@@ -28,10 +30,12 @@ export async function POST(request: NextRequest) {
     if (!validationResult.success) {
       // Even with validation error, return a generic message to prevent email enumeration
       // Log the actual error for server-side debugging
-      console.error("Password reset request validation error:", validationResult.error.flatten().fieldErrors);
+      // Try to get email from rawBody if possible, for logging, but be careful as it's unvalidated
+      const attemptedEmail = typeof rawBody?.email === 'string' ? rawBody.email : 'unknown';
+      log('WARNING', `Password reset request validation error for email: ${attemptedEmail} - Details: ${JSON.stringify(validationResult.error.flatten().fieldErrors)}`);
       return NextResponse.json({ message: 'If your email is registered, you will receive a password reset link.' }, { status: 200 });
     }
-    const { email } = validationResult.data;
+    email = validationResult.data.email; // Assign validated email
 
     // 2. Find user by email
     const user = await prisma.user.findUnique({
@@ -39,6 +43,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
+      log('INFO', `Password reset request for non-existent user: ${email}`);
       // User not found, still return a generic message
       return NextResponse.json({ message: 'If your email is registered, you will receive a password reset link.' }, { status: 200 });
     }
@@ -74,16 +79,17 @@ export async function POST(request: NextRequest) {
     // 4. Send an email to the user with a link containing the token
     // This is where you would integrate with an email sending service.
     // For now, we'll just log it for development/testing.
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${rawToken}`;
-    console.log(`Password reset requested for ${email}. Token: ${rawToken}`);
-    console.log(`Reset link (for dev): ${resetLink}`);
+    // const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${rawToken}`; // Not needed for server log
+    log('INFO', `Password reset token generated for email: ${email}`);
+    // console.log(`Reset link (for dev): ${resetLink}`); // Remove console.log of actual token/link
     // await sendPasswordResetEmail(email, resetLink); // Actual email sending function
 
     // 5. Return success response (always, to prevent email enumeration)
     return NextResponse.json({ message: 'If your email is registered, you will receive a password reset link.' }, { status: 200 });
 
   } catch (error) {
-    console.error('Request password reset error:', error);
+    const message = `Request password reset error for email ${email || 'unknown'}: ${error instanceof Error ? error.message : String(error)}`;
+    log('SEVERE', message);
     // Do not reveal specific errors to the client for security reasons
     return NextResponse.json({ message: 'If your email is registered, you will receive a password reset link.' }, { status: 200 });
     // Or a generic error if something truly unexpected happened:

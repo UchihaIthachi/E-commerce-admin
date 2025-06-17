@@ -4,6 +4,7 @@ import prisma from '@/server/infrastructure/clients/prisma';
 import { registerLimiter, getClientIp, consumeLimiter } from '@/lib/rate-limiter'; // Import rate limiter
 import { RegisterSchema } from '@/lib/validators/auth-schemas';
 import { Role } from '@prisma/client';
+import { log } from '@/server/application/common/services/logging';
 
 export async function POST(request: NextRequest) { // Changed type to NextRequest
   const clientIp = getClientIp(request);
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) { // Changed type to NextReques
     });
 
     if (existingUser) {
+      log('WARNING', `Registration attempt for existing user: ${email}`);
       return NextResponse.json({ error: 'User already exists' }, { status: 409 });
     }
 
@@ -77,13 +79,14 @@ export async function POST(request: NextRequest) { // Changed type to NextReques
                                          // The user object from prisma.user.create won't have password
                                          // but good practice to be explicit if fetching user later.
 
+    log('INFO', `User registered successfully: ${user.email}`);
     return NextResponse.json({
       message: 'User registered successfully',
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Registration error:', error);
+    log('SEVERE', `Registration error: ${error instanceof Error ? error.message : String(error)}`);
     if (error instanceof SyntaxError) { // Handle cases where request.json() fails
         return NextResponse.json({ error: 'Invalid JSON input' }, { status: 400 });
     }

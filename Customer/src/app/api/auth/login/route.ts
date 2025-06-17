@@ -5,6 +5,7 @@ import { loginLimiter, getClientIp, consumeLimiter } from '@/lib/rate-limiter'; 
 import prisma from '@/server/infrastructure/clients/prisma';
 import { serialize } from 'cookie'; // For setting cookies
 import { LoginSchema } from '@/lib/validators/auth-schemas'; // Import Zod schema
+import { log } from '@/server/application/common/services/logging';
 
 // Ensure JWT secrets are loaded from environment variables
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest) { // Changed type to NextReques
     });
 
     if (!account || !account.password) {
+      log('WARNING', `Failed login attempt for email: ${email} - Invalid credentials (user or password mismatch)`);
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
@@ -56,6 +58,7 @@ export async function POST(request: NextRequest) { // Changed type to NextReques
     const isPasswordValid = await bcrypt.compare(password, account.password);
 
     if (!isPasswordValid) {
+      log('WARNING', `Failed login attempt for email: ${email} - Invalid credentials (password mismatch)`);
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
@@ -129,6 +132,7 @@ export async function POST(request: NextRequest) { // Changed type to NextReques
     headers.append('Set-Cookie', accessTokenCookie);
     headers.append('Set-Cookie', refreshTokenCookie);
 
+    log('INFO', `Successful login for user: ${user.email}`);
     // 7. Return user info and access token (if not exclusively in cookie)
     return NextResponse.json({
       message: 'Login successful',
@@ -137,7 +141,7 @@ export async function POST(request: NextRequest) { // Changed type to NextReques
     }, { status: 200, headers });
 
   } catch (error) {
-    console.error('Login error:', error);
+    log('SEVERE', `Login error: ${error instanceof Error ? error.message : String(error)}`);
     if (error instanceof SyntaxError) {
         return NextResponse.json({ error: 'Invalid JSON input' }, { status: 400 });
     }
