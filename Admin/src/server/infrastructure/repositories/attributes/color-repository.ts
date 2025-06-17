@@ -84,10 +84,29 @@ export const createColor = async (params: CreateColorParams) => {
     await dynamicClient.create(doc);
   };
 
-export const findColorByName = async (name: string) => {
-    const query = groq`*[_type == 'color' && name=="${name}"]._id`;
-    const data = await dynamicClient.fetch(query);
-    return data.length > 0;
+export const findColorByName = async (name: string): Promise<z.infer<typeof GetColorDTO> | null> => {
+    const query = `
+      query FindColorByName($name: String!) {
+        allColor(where: { name: { eq: $name } }, limit: 1) {
+          _id
+          name
+          hex
+        }
+      }
+    `;
+    const variables = { name };
+    try {
+      const response = await graphqlClient.request(query, variables);
+      if (response.allColor && response.allColor.length > 0) {
+        return GetColorDTO.parse(response.allColor[0]);
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error fetching color by name "${name}":`, error);
+      // Depending on desired error handling, you might throw or return null
+      // For consistency with "not found" returning null, we can return null here too after logging.
+      return null;
+    }
   };
 
 export const updateColor = async (params: UpdateColorParams) => {

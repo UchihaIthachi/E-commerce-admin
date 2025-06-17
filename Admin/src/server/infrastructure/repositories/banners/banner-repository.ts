@@ -92,3 +92,8 @@ export const updateBanner = async (params: UpdateBannerParams) => {
     const {_id, name, desktop_image, mobile_image} = params;
     await dynamicClient.patch(_id).set({name, desktop_image, mobile_image}).commit();
 };
+
+export const deleteBanner = async (_id: string) => {
+    // Add error handling as needed, e.g., if the document doesn't exist or delete fails
+    await dynamicClient.delete(_id);
+};

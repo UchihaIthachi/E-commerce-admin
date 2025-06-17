@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import prisma from '@/server/infrastructure/clients/prisma';
+import { refreshTokenLimiter, getClientIp, consumeLimiter } from '@/lib/rate-limiter'; // Import rate limiter
 import bcrypt from 'bcryptjs';
 import { serialize } from 'cookie';
 import { parse } from 'cookie'; // To parse incoming cookies
@@ -13,6 +14,13 @@ if (!JWT_ACCESS_SECRET || !JWT_REFRESH_SECRET) {
 }
 
 export async function POST(request: NextRequest) {
+  const clientIp = getClientIp(request);
+  const isAllowed = await consumeLimiter(refreshTokenLimiter, clientIp, 'Too many refresh attempts. Please try again later.');
+
+  if (!isAllowed) {
+    return NextResponse.json({ error: 'Too many refresh attempts. Please try again later.' }, { status: 429 });
+  }
+
   try {
     // 1. Extract refresh token from HTTPOnly cookie
     const cookieHeader = request.headers.get('cookie');

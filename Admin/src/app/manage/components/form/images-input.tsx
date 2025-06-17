@@ -13,8 +13,9 @@ import {
 } from "react-hook-form";
 import Image from "next/image";
 import ImageCard from "@/app/manage/products/components/media-input/components/image-card";
-import {useMutation} from "@tanstack/react-query";
-import {deleteImage, putImage} from "@/lib/api/media";
+// import {useMutation} from "@tanstack/react-query"; // Replaced by tRPC hooks
+// import {deleteImage, putImage} from "@/lib/api/media"; // Replaced by tRPC calls
+import { trpc } from "@/lib/providers"; // Import trpc instance
 import {useToast} from "@/components/ui/use-toast";
 
 type ImagesInputProps = {
@@ -26,67 +27,72 @@ type ImagesInputProps = {
 function ImagesInput({name, label, constrain}: ImagesInputProps) {
     const {control} = useFormContext();
     const {toast} = useToast();
+    const utils = trpc.useContext(); // For potential cache invalidations if needed
 
-    const {mutateAsync: putImageMutate, isLoading: isPutImageMutateLoading} =
-        useMutation({
-            mutationFn: putImage,
-            onMutate: () => {
-                toast({
-                    title: "Uploading...",
-                });
-            },
-            onSuccess: () => {
-                toast({
-                    title: "File uploaded successfully",
-                });
-            },
-        });
-
-    const {
-        mutateAsync: deleteImageMutate,
-        isLoading: isDeleteImageMutateLoading,
-    } = useMutation({
-        mutationFn: deleteImage,
-        onMutate: () => {
-            toast({
-                title: "Deleting...",
-            });
+    const createPresignedUrlMutation = trpc.adminImage.createPresignedUploadUrl.useMutation({
+        onSuccess: (data) => {
+            // toast({ title: "Presigned URL created", description: "Ready to upload." });
         },
-        onSuccess: () => {
-            toast({
-                title: "File Deleted successfully",
-            });
-        },
-    });
-
-    const handleImageChange = async (
-        image: File,
-        field: ControllerRenderProps<FieldValues, string>
-    ) => {
-        try {
-            const url = await putImageMutate({file: image});
-            field.onChange([...field.value, url]);
-        } catch (error) {
-            console.log(error)
+        onError: (error) => {
             toast({
                 variant: "destructive",
-                title: "Error",
-                description: "Error while uploading image",
+                title: "Error creating upload URL",
+                description: error.message,
             });
         }
-    };
+    });
 
-    const handleDelete = async (
-        src: string,
+    const deleteImageMutation = trpc.adminImage.deleteImage.useMutation({
+        onSuccess: (data) => {
+            toast({ title: "Success", description: data.message });
+            // Potentially invalidate queries if there's a list of images somewhere
+        },
+        onError: (error) => {
+            toast({
+                variant: "destructive",
+                title: "Error deleting image",
+                description: error.message,
+            });
+        }
+    });
+
+
+    const handleImageChange = async (
+        imageFile: File, // Renamed to imageFile for clarity
         field: ControllerRenderProps<FieldValues, string>
     ) => {
+        if (!imageFile) return;
+
+        toast({ title: "Processing image..." });
+
         try {
-            console.log(src.split("/").at(-1));
-            const id = src.split("/").at(-1) as string;
-            await deleteImageMutate({id});
-            const prevImages: string[] = field.value;
-            field.onChange(prevImages.filter((el) => el !== src));
-        } catch (error) {
+            // 1. Get presigned URL from tRPC
+            const presignedData = await createPresignedUrlMutation.mutateAsync({
+                fileType: imageFile.type,
+            });
+
+            // 2. Upload file to presigned URL (Cloudflare R2 / S3)
+            const uploadResponse = await fetch(presignedData.url, {
+                method: 'PUT',
+                body: imageFile,
+                headers: {
+                    'Content-Type': imageFile.type,
+                },
+            });
+
+            if (!uploadResponse.ok) {
+                const errorText = await uploadResponse.text();
+                throw new Error(`Upload failed: ${uploadResponse.statusText} - ${errorText}`);
+            }
+
+            toast({ title: "File uploaded successfully" });
+
+            // 3. Update form state with the public URL
+            const currentImages = field.value || [];
+            field.onChange([...currentImages, presignedData.publicURL]);
+
+        } catch (error: any) {
+            console.error("Error during image upload process:", error);
             toast({
                 variant: "destructive",
                 title: "Error",

@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { SelectItem } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { updateOrderStatus } from "@/lib/api/order";
+// import { updateOrderStatus } from "@/lib/api/order"; // No longer needed
+import { trpc } from "@/lib/providers"; // Import trpc instance
 import { OrderStatusFieldDTO } from "@/server/application/common/dtos/order";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+// import { useMutation, useQueryClient } from "@tanstack/react-query"; // No longer needed
 import { Loader2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -26,10 +27,11 @@ const values = ["PENDING", "PROCESSING", "FULFILLED", "REJECTED"];
 
 function UpdateOrderStatusForm({ order_status }: UpdateOrderStatusFormProps) {
   const { id }: { id: string } = useParams();
-  const queryClient = useQueryClient();
+  // const queryClient = useQueryClient(); // No longer needed directly
   const { toast } = useToast();
+  const utils = trpc.useContext();
 
-  const updateOrderStatusForm = useForm<
+  const form = useForm< // Renamed form instance
     z.infer<typeof UpdateOrderStatusFormSchema>
   >({
     resolver: zodResolver(UpdateOrderStatusFormSchema),
@@ -38,39 +40,40 @@ function UpdateOrderStatusForm({ order_status }: UpdateOrderStatusFormProps) {
     },
   });
 
-  const { mutate: orderStatusMutate, isLoading: IsOrderStatusMutateLoading } =
-    useMutation({
-      mutationFn: updateOrderStatus,
-      onSuccess: () => {
-        queryClient.invalidateQueries(["ORDER", id]);
-        toast({
-          title: "Successfully updated order status",
-          variant: "default",
-        });
-      },
-      onError: () =>
-        toast({
-          title: "Error while updating order status.",
-          variant: "destructive",
-        }),
-    });
+  const updateOrderMutation = trpc.adminOrder.update.useMutation({
+    onSuccess: (data) => { // data is { success: boolean, message: string }
+      utils.adminOrder.getById.invalidate({ id }); // Invalidate the specific order query
+      // utils.adminOrder.getAll.invalidate(); // Optionally invalidate list if status change affects list view
+      toast({
+        title: "Success",
+        description: data.message,
+      });
+    },
+    onError: (error) =>
+      toast({
+        title: "Error",
+        variant: "destructive",
+        description: error.message || "Error updating order status.",
+      }),
+  });
 
   const onSubmit = async (
     values: z.infer<typeof UpdateOrderStatusFormSchema>
   ) => {
-    orderStatusMutate({ id, order_status: values.order_status });
+    updateOrderMutation.mutate({ id, order_status: values.order_status });
   };
 
   return (
-    <Form {...updateOrderStatusForm}>
+    <Form {...form}>
       <form
         className="flex items-end gap-x-4"
-        onSubmit={updateOrderStatusForm.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit(onSubmit)}
       >
         <SelectInput
+          control={form.control} // Pass control
           name={"order_status"}
           label={"Order Status"}
-          placeholder={""}
+          placeholder={"Select Status"} // Changed placeholder
         >
           {values.map((el, i) => (
             <SelectItem key={i} value={el}>

@@ -80,10 +80,29 @@ export const createSize = async (params: CreateSizeParams) => {
     await dynamicClient.create(doc);
   };
 
-export const findSizeByName = async (name: string) => {
-    const query = groq`*[_type == 'size' && name=="${name}"]._id`;
-    const data = await dynamicClient.fetch(query);
-    return data.length > 0;
+import { z } from "zod";
+
+export const findSizeByName = async (name: string): Promise<z.infer<typeof GetSizeDTO> | null> => {
+    const query = `
+      query FindSizeByName($name: String!) {
+        allSize(where: { name: { eq: $name } }, limit: 1) {
+          _id
+          name
+        }
+      }
+    `;
+    const variables = { name };
+    try {
+      const response = await graphqlClient.request(query, variables);
+      if (response.allSize && response.allSize.length > 0) {
+        return GetSizeDTO.parse(response.allSize[0]);
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error fetching size by name "${name}":`, error);
+      // Depending on desired error handling, you might throw or return null
+      return null;
+    }
   };
 
 export const updateSize = async (params: UpdateSizeParams) => {

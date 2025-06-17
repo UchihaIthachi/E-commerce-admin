@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'; // Import NextRequest
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { loginLimiter, getClientIp, consumeLimiter } from '@/lib/rate-limiter'; // Import rate limiter
 import prisma from '@/server/infrastructure/clients/prisma';
 import { serialize } from 'cookie'; // For setting cookies
+import { LoginSchema } from '@/lib/validators/auth-schemas'; // Import Zod schema
 
 // Ensure JWT secrets are loaded from environment variables
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
@@ -13,15 +15,25 @@ if (!JWT_ACCESS_SECRET || !JWT_REFRESH_SECRET) {
   throw new Error('JWT secret keys must be defined in environment variables.');
 }
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { email, password } = body;
+export async function POST(request: NextRequest) { // Changed type to NextRequest
+  const clientIp = getClientIp(request);
+  const isAllowed = await consumeLimiter(loginLimiter, clientIp);
 
-    // 1. Validate inputs
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+  if (!isAllowed) {
+    return NextResponse.json({ error: 'Too many login attempts. Please try again later.' }, { status: 429 });
+  }
+
+  try {
+    const rawBody = await request.json();
+    const validationResult = LoginSchema.safeParse(rawBody);
+
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: validationResult.error.flatten().fieldErrors },
+        { status: 400 }
+      );
     }
+    const { email, password } = validationResult.data; // Use validated data
 
     // 2. Find user by email in Account table for 'credentials' provider
     const account = await prisma.account.findFirst({

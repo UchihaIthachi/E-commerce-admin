@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, FormEvent } from 'react';
+import React, { useState, FormEvent, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,10 +18,19 @@ export default function SignUpPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const auth = useAuth(); // Use the auth context
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      router.push('/');
+    }
+  }, [auth.isAuthenticated, router]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
+    auth.clearError(); // Clear global auth error if it were used
     setSuccessMessage(null);
     setLoading(true);
 
@@ -51,15 +61,35 @@ export default function SignUpPage() {
           router.push('/sign-in');
         }, 2000);
       } else {
-        setError(data.error || 'Registration failed. Please try again.');
+        // Handle Zod validation errors from API if details are provided
+        if (data.details) {
+          let messages: string[] = [];
+          for (const key in data.details) {
+            if (data.details[key]) {
+              messages.push(`${key}: ${data.details[key].join(', ')}`);
+            }
+          }
+          setError(messages.length > 0 ? messages.join('; ') : (data.error || 'Registration failed. Please try again.'));
+        } else {
+          setError(data.error || 'Registration failed. Please try again.');
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Registration request failed:", err);
-      setError('An unexpected error occurred. Please try again.');
+      setError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading or null if auth.isLoading or already authenticated (to avoid flash of form)
+  if (auth.isLoading || auth.isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">

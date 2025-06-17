@@ -1,7 +1,8 @@
 "use client";
 
-import { getCategory } from "@/lib/api/category"; // This might be replaced by tRPC query in future
-import { useQuery } from "@tanstack/react-query";
+// import { getCategory } from "@/lib/api/category"; // No longer needed
+// import { useQuery } from "@tanstack/react-query"; // No longer needed
+import { trpc } from "@/lib/providers"; // Import trpc instance
 import EditCategoryForm from "../../components/edit-category-form/edit-category-form";
 import { Loader2 } from "lucide-react"; // For loading state
 
@@ -10,11 +11,11 @@ type EditCategoryPageProps = {
 };
 
 function EditCategoryPage({ params: { _id } }: EditCategoryPageProps) {
-  const { data: category, isLoading, error } = useQuery({ // Data fetching remains for now
-    queryKey: ["CATEGORY", _id],
-    queryFn: () => getCategory(_id),
-    // Consider enabling staleTime or cacheTime if data isn't expected to change while user is on this page
-  });
+  const {
+    data: category,
+    isLoading,
+    error,
+  } = trpc.adminCategory.getById.useQuery({ _id });
 
   if (isLoading) {
     return (

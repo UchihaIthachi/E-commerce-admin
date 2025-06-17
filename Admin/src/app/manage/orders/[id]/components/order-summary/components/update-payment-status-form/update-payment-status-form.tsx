@@ -8,8 +8,9 @@ import SelectInput from "../../../select-input";
 import { SelectItem } from "@/components/ui/select";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateOrderStatus, updatePaymentStatus } from "@/lib/api/order";
+// import { useMutation, useQueryClient } from "@tanstack/react-query"; // No longer needed
+// import { updatePaymentStatus } from "@/lib/api/order"; // No longer needed
+import { trpc } from "@/lib/providers"; // Import trpc instance
 import { useParams } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -32,10 +33,11 @@ function UpdatePaymentStatusForm({
   payment_status,
 }: UpdatePaymentStatusFormProps) {
   const { id }: { id: string } = useParams();
-  const queryClient = useQueryClient();
+  // const queryClient = useQueryClient(); // No longer needed directly
   const { toast } = useToast();
+  const utils = trpc.useContext();
 
-  const updateOrderStatusForm = useForm<
+  const form = useForm< // Renamed form instance
     z.infer<typeof UpdatePaymentStatusFormSchema>
   >({
     resolver: zodResolver(UpdatePaymentStatusFormSchema),
@@ -44,38 +46,39 @@ function UpdatePaymentStatusForm({
     },
   });
 
-  const {
-    mutate: paymentStatusMutate,
-    isLoading: IsPaymentStatusMutateLoading,
-  } = useMutation({
-    mutationFn: updatePaymentStatus,
-    onSuccess: () => {
-      queryClient.invalidateQueries(["ORDER", id])
-      toast({title:"Successfully updated payment status", variant: "default"})
-    },
-    onError: () =>
+  const updateOrderMutation = trpc.adminOrder.update.useMutation({
+    onSuccess: (data) => {
+      utils.adminOrder.getById.invalidate({ id });
       toast({
-        title: "Error while updating order status.",
+        title: "Success",
+        description: data.message,
+      });
+    },
+    onError: (error) =>
+      toast({
+        title: "Error",
         variant: "destructive",
+        description: error.message || "Error updating payment status.",
       }),
   });
 
   const onSubmit = async (
     values: z.infer<typeof UpdatePaymentStatusFormSchema>
   ) => {
-    paymentStatusMutate({ id, payment_status: values.payment_status });
+    updateOrderMutation.mutate({ id, payment_status: values.payment_status });
   };
 
   return (
-    <Form {...updateOrderStatusForm}>
+    <Form {...form}>
       <form
         className="flex items-end gap-x-4"
-        onSubmit={updateOrderStatusForm.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit(onSubmit)}
       >
         <SelectInput
+          control={form.control} // Pass control
           name={"payment_status"}
           label={"Payment Status"}
-          placeholder={""}
+          placeholder={"Select Status"} // Changed placeholder
         >
           {values.map((el, i) => (
             <SelectItem key={i} value={el}>

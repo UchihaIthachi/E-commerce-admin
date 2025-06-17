@@ -3,114 +3,139 @@
 import TextInput from "@/app/manage/components/form/text-input";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
-import { addCategory, getCategories, updateCategory } from "@/lib/api/category";
+// import { getCategories } from "@/lib/api/category"; // No longer needed
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+// import { trpc } from "@/lib/providers"; // No longer using tRPC mutation
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+// Server Action imports
+import { updateSubcategoryAction, FormState } from "../../actions"; // Adjust path as needed
+import { useFormState, useFormStatus } from "react-dom";
+import { useEffect } from "react";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { GetSubCategoryDTO } from "@/server/application/common/dtos/subcategory";
 import SelectInput from "@/app/manage/components/form/select-input";
 import { SelectItem } from "@/components/ui/select";
-import { getSubCategories, updateSubCategory } from "@/lib/api/subcategory";
+// import { updateSubCategory } from "@/lib/api/subcategory"; // No longer needed
 import NumberInput from "../../../../components/form/number-input";
 import ImagesInput from "@/app/manage/components/form/images-input";
 
 const EditSubCategoryFormSchema = z.object({
-  name: z.string().min(2).max(50),
+  name: z.string().min(2, "Name must be at least 2 characters.").max(50),
   slug: z
     .string()
-    .min(2)
-    .max(50)
+    .min(2, "Slug must be at least 2 characters.")
+    .max(50, "Slug must be at most 50 characters.")
     .refine((v) => v === v.toLowerCase(), {
       message: "Slugs can't have capital letters",
     })
     .refine((v) => !v.includes(" "), {
       message: "Slugs can't have spaces",
     }),
-  category: z.string({ required_error: "Please select a category" }),
-  seo: z.object({
-    title: z.string().max(60).optional(),
-    description: z.string().max(160).optional(),
-    og_title: z.string().optional(),
-    og_description: z.string().optional(),
-    og_image: z.object({
-      image: z.string().array().optional(),
-      width: z.number().optional(),
-      height: z.number().optional(),
-      alt: z.string().optional(),
-    })
-  }),
+  category: z.string({ required_error: "Please select a category." }),
+  // Flattened SEO fields for FormData
+  "seo.title": z.string().max(60).optional().nullable(),
+  "seo.description": z.string().max(160).optional().nullable(),
 });
+
+// SubmitButton component
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending ? (
+        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+      ) : null}
+      Save Changes
+    </Button>
+  );
+}
+
+const initialState: FormState = {
+  message: null,
+  errors: undefined,
+  type: null,
+};
 
 function EditSubCategoryForm({
   subcategory,
 }: {
   subcategory: z.infer<typeof GetSubCategoryDTO>;
 }) {
-  const EditSubCategoryForm = useForm<
+  const form = useForm<
     z.infer<typeof EditSubCategoryFormSchema>
   >({
     resolver: zodResolver(EditSubCategoryFormSchema),
     defaultValues: {
-      name: subcategory.name,
-      slug: subcategory.slug,
+      name: subcategory.name || "",
+      slug: subcategory.slug || "",
       category: subcategory.category._id,
-      seo: subcategory.seo
+      "seo.title": subcategory.seo?.title || "",
+      "seo.description": subcategory.seo?.description || "",
     },
   });
 
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
+  // const utils = trpc.useContext(); // Keep if tRPC queries need invalidation from here
 
-  const { data: categories, isLoading: isCategoriesLoading } = useQuery({
-    queryKey: ["CATEGORY"],
-    queryFn: getCategories,
-  });
+  // Still using tRPC to fetch categories for the select dropdown
+  const { data: categories, isLoading: isCategoriesLoading, error: categoriesError } = trpc.adminCategory.getAll.useQuery();
 
-  const { mutate, isLoading } = useMutation({
-    mutationFn: updateSubCategory,
-    onSuccess: () => {
-      queryClient.invalidateQueries(["SUBCATEGORY"])
-      toast({title:"Success", variant: "default"})
-    },
-    onError: (error) =>
-      toast({
-        title: "Error",
-        variant: "destructive",
-        description: "Cannot update as subcategory is already referenced",
-      }),
-  });
+  const [state, formAction] = useFormState(updateSubcategoryAction, initialState);
 
-  const onSubmit = async (
-    values: z.infer<typeof EditSubCategoryFormSchema>
-  ) => {
-    mutate({ _id: subcategory._id, ...values });
-  };
+  useEffect(() => {
+    if (state?.type === "success") {
+        toast({ title: "Success", description: state.message });
+        // No redirect here, allow user to make further edits or navigate away manually
+        // Could invalidate specific queries if needed using utils.adminSubCategory.getById.invalidate({_id: subcategory._id});
+    } else if (state?.type === "error") {
+        toast({
+            title: "Error",
+            variant: "destructive",
+            description: state.message,
+        });
+        if (state.errors) {
+            for (const [key, value] of Object.entries(state.errors)) {
+                 if (value && value.length > 0) {
+                    form.setError(key as keyof z.infer<typeof EditSubCategoryFormSchema>, { type: 'manual', message: value.join(', ') });
+                }
+            }
+        }
+    }
+  }, [state, toast, form, subcategory._id]); // Added subcategory._id to deps for potential future use with invalidate
+
+  // onSubmit is now handled by the form's action prop
+  // const onSubmit = async (values: z.infer<typeof EditSubCategoryFormSchema>) => { ... };
 
   return (
     <div>
       <Button variant="link" className="px-0" onClick={() => router.back()}>
         Back
       </Button>
-      <Form {...EditSubCategoryForm}>
+      <Form {...form}>
         <form
-          onSubmit={EditSubCategoryForm.handleSubmit(onSubmit)}
-          className="w-1/2 py-4"
+          action={formAction} // Use the server action
+          // onSubmit={form.handleSubmit(onSubmit)}
+          className="w-full lg:w-3/4 xl:w-1/2 py-4"
         >
+          {/* Hidden input for the subcategory ID */}
+          <input type="hidden" name="_id" value={subcategory._id} />
+
           <h4>Basic Information</h4>
           <div className="mt-4 flex flex-col gap-y-4">
-            <TextInput name="name" placeholder="Women" label="Name" />
-            <TextInput name="slug" placeholder="women" label="Slug" />
+            <TextInput control={form.control} name="name" placeholder="e.g., T-Shirts" label="Name" />
+            <TextInput control={form.control} name="slug" placeholder="e.g., t-shirts" label="Slug" />
             <SelectInput
-              disabled={isCategoriesLoading}
+              control={form.control}
+              disabled={isCategoriesLoading || !!categoriesError}
               name="category"
               label="Category"
               placeholder="Select a category"
             >
+              {categoriesError && <p className="text-sm text-destructive">Error loading categories.</p>}
               {categories?.map((el) => (
                 <SelectItem key={el._id} value={el._id}>
                   {el.name}
@@ -121,43 +146,20 @@ function EditSubCategoryForm({
           <div className="mt-8">
             <h4>SEO</h4>
             <div className="grid gap-y-2">
-              <TextInput name="seo.title" placeholder="" label="Title" />
+              <TextInput control={form.control} name="seo.title" placeholder="SEO Title" label="Title"/>
               <TextInput
+                control={form.control}
                 name="seo.description"
-                placeholder=""
+                placeholder="SEO Meta Description"
                 label="Meta Description"
               />
-              <TextInput name="seo.og_title" placeholder="" label="OG Title" />
-              <TextInput
-                name="seo.og_description"
-                placeholder=""
-                label="OG Description"
-              />
-              <div>
-                <h6>OG Image</h6>
-                <div className={"grid grid-cols-1 gap-y-4"}>
-                  <ImagesInput
-                    constrain={1}
-                    name="seo.og_image.image"
-                    label="Image"
-                  />
-                  <div className="grid grid-cols-2 gap-x-4 ">
-                    <NumberInput name="seo.og_image.width" label="Width" />
-                    <NumberInput name="seo.og_image.height" label="height" />
-                  </div>
-                  <TextInput name={"seo.og_image.alt"} label={"Alternative Text"} />
-                </div>
-              </div>
             </div>
           </div>
-          <div className="my-4">
-            <Button type="submit">
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Save"
-              )}
-            </Button>
+           {state?.errors?._form && (
+             <p className="text-sm font-medium text-destructive pt-2">{state.errors._form.join(', ')}</p>
+           )}
+          <div className="my-6">
+            <SubmitButton />
           </div>
         </form>
       </Form>

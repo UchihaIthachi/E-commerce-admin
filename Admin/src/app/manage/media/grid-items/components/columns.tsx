@@ -7,7 +7,7 @@ import {DropdownMenuItem} from "@/components/ui/dropdown-menu";
 import {ColumnDef} from "@tanstack/react-table";
 import {z} from "zod";
 import {GetGridItemDTO} from "@/server/application/common/dtos/grid-item";
-import {deleteGridItem} from "@/lib/api/grid-item";
+// import {deleteGridItem} from "@/lib/api/grid-item"; // No longer needed, no server action for delete yet
 
 export const columns: ColumnDef<z.infer<typeof GetGridItemDTO>>[] = [
     {
@@ -32,16 +32,17 @@ export const columns: ColumnDef<z.infer<typeof GetGridItemDTO>>[] = [
                     <DropdownMenuItem>
                         <EditAction href={`/manage/media/grid-items/${_id}/edit`} text="Edit"/>
                     </DropdownMenuItem>
+                    {/* Delete functionality removed as no delete command handler exists for grid items
                     <DropdownMenuItem
                         className="text-red-500"
                     >
                         <DeleteAction
                             _id={_id}
-                            queryKey="GRID_ITEM"
-                            mutationFn={deleteGridItem}
-                            message="This grid item is referenced by other documents"
+                            action={undefined} // Needs a deleteGridItemAction
+                            itemName="grid item"
                         />
                     </DropdownMenuItem>
+                    */}
                 </ActionDropdown>
             );
         },

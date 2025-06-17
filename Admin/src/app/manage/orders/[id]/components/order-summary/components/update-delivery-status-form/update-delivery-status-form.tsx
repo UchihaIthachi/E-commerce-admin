@@ -8,12 +8,9 @@ import SelectInput from "../../../select-input";
 import {SelectItem} from "@/components/ui/select";
 import {Form} from "@/components/ui/form";
 import {Button} from "@/components/ui/button";
-import {useMutation, useQueryClient} from "@tanstack/react-query";
-import {
-    updateDeliveryStatus,
-    updateOrderStatus,
-    updatePaymentStatus,
-} from "@/lib/api/order";
+// import {useMutation, useQueryClient} from "@tanstack/react-query"; // No longer needed
+// import { updateDeliveryStatus } from "@/lib/api/order"; // No longer needed
+import { trpc } from "@/lib/providers"; // Import trpc instance
 import {useParams} from "next/navigation";
 import {useToast} from "@/components/ui/use-toast";
 import {
@@ -37,10 +34,11 @@ function UpdateDeliveryStatusForm({
                                       delivery_status,
                                   }: UpdateDeliveryStatusFormProps) {
     const {id}: { id: string } = useParams();
-    const queryClient = useQueryClient();
+    // const queryClient = useQueryClient(); // No longer needed directly
     const {toast} = useToast();
+    const utils = trpc.useContext();
 
-    const updateOrderStatusForm = useForm<
+    const form = useForm< // Renamed form instance
         z.infer<typeof UpdateDeliveryStatusFormSchema>
     >({
         resolver: zodResolver(UpdateDeliveryStatusFormSchema),
@@ -49,38 +47,39 @@ function UpdateDeliveryStatusForm({
         },
     });
 
-    const {
-        mutate: deliveryStatusMutate,
-        isLoading: IsDeliveryStatusMutateLoading,
-    } = useMutation({
-        mutationFn: updateDeliveryStatus,
-        onSuccess: () => {
-            queryClient.invalidateQueries(["ORDER", id])
-            toast({title:"Successfully updated delivery status", variant: "default"})
-        },
-        onError: () =>
+    const updateOrderMutation = trpc.adminOrder.update.useMutation({
+        onSuccess: (data) => {
+            utils.adminOrder.getById.invalidate({ id });
             toast({
-                title: "Error while updating delviery status.",
+                title: "Success",
+                description: data.message,
+            });
+        },
+        onError: (error) =>
+            toast({
+                title: "Error",
                 variant: "destructive",
+                description: error.message || "Error updating delivery status.",
             }),
     });
 
     const onSubmit = async (
         values: z.infer<typeof UpdateDeliveryStatusFormSchema>
     ) => {
-        deliveryStatusMutate({id, delivery_status: values.delivery_status});
+        updateOrderMutation.mutate({id, delivery_status: values.delivery_status});
     };
 
     return (
-        <Form {...updateOrderStatusForm}>
+        <Form {...form}>
             <form
                 className="flex items-end gap-x-4"
-                onSubmit={updateOrderStatusForm.handleSubmit(onSubmit)}
+                onSubmit={form.handleSubmit(onSubmit)}
             >
                 <SelectInput
+                    control={form.control} // Pass control
                     name={"delivery_status"}
                     label={"Delivery Status"}
-                    placeholder={""}
+                    placeholder={"Select Status"} // Changed placeholder
                 >
                     {values.map((el, i) => (
                         <SelectItem key={i} value={el}>

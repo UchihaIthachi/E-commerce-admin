@@ -2,23 +2,38 @@
 
 import { columns } from "./components/columns";
 import { DataTable } from "./components/data-table";
-import { getOrders } from "@/lib/api/order";
-import { useQuery } from "@tanstack/react-query";
+// import { getOrders } from "@/lib/api/order"; // No longer needed
+// import { useQuery } from "@tanstack/react-query"; // No longer needed
+import { trpc } from "@/lib/providers"; // Import trpc instance
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import FilterForm from "@/app/manage/orders/components/filter-form/filter-form";
 import { useSearchParams } from "next/navigation";
-import LoadingSpinner from '@/components/ui/LoadingSpinner'; // Import LoadingSpinner
-import { getRange } from "@/app/manage/orders/components/utils/utils";
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+// import { getRange } from "@/app/manage/orders/components/utils/utils"; // Assuming this was for client-side filtering, may not be needed if filters are passed to tRPC
+import { OrderFilters as OrderFiltersDTO } from "@/server/application/common/dtos/order"; // Import DTO for input
+import { z } from "zod"; // For safe parsing if needed, or direct object construction
+
+type OrderFiltersInput = z.input<typeof OrderFiltersDTO>;
 
 function OrdersPage() {
-  const filters = useSearchParams().toString();
+  const searchParams = useSearchParams();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["ORDER", filters],
-    queryFn: () => getOrders(filters),
-  });
+  // Construct filters object from searchParams
+  // This needs to align with the OrderFiltersDTO structure
+  const filters: OrderFiltersInput = {
+    order_status: searchParams.get("order_status") || undefined,
+    payment_status: searchParams.get("payment_status") || undefined,
+    delivery_status: searchParams.get("delivery_status") || undefined,
+    date_from: searchParams.get("date_from") || undefined,
+    date_to: searchParams.get("date_to") || undefined,
+    // Add other potential filters from OrderFiltersDTO
+  };
+  // Remove undefined keys to avoid sending them, or ensure DTO handles undefined correctly
+  Object.keys(filters).forEach(key => filters[key as keyof OrderFiltersInput] === undefined && delete filters[key as keyof OrderFiltersInput]);
 
-  // console.log(filters);
+
+  const { data, isLoading, error } = trpc.adminOrder.getAll.useQuery(filters);
+
   console.log(data);
   const paidOrders = data?.filter((order) => order.payment_status == "PAID")
   const totalSales = paidOrders?.map((order) => order.total)

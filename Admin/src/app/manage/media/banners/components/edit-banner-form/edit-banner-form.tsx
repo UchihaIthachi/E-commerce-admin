@@ -8,19 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { DevTool } from "@hookform/devtools";
-import { trpc } from "@/lib/providers"; // Import trpc instance
+// import { trpc } from "@/lib/providers"; // No longer using tRPC mutation
 import { GetBannerDTO } from "@/server/application/common/dtos/banner"; // For prop type
 import { useRouter } from "next/navigation"; // For navigation
+// Server Action imports
+import { updateBannerAction, BannerFormState } from "../../actions"; // Adjust path as needed
+import { useFormState, useFormStatus } from "react-dom";
+import { useEffect } from "react";
 
 type EditBannerFormProps = {
-  banner: z.infer<typeof GetBannerDTO>; // Use GetBannerDTO for initial banner prop
+  banner: z.infer<typeof GetBannerDTO>;
 };
 
-// Client-side schema for the form, images are arrays for ImagesInput
+// Client-side schema, ensuring image fields expect string URLs
 const EditBannerFormClientSchema = z.object({
-  name: z.string().min(2).max(50),
-  desktop_image: z.string().array().nonempty("Desktop image is required."),
-  mobile_image: z.string().array().nonempty("Mobile image is required."),
+  name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name must be at most 50 characters."),
+  desktop_image: z.string().url("Desktop image URL is required."),
+  mobile_image: z.string().url("Mobile image URL is required."),
 });
 
 type EditBannerFormValues = z.infer<typeof EditBannerFormClientSchema>;
@@ -37,69 +41,71 @@ const EditBannerForm = ({ banner }: EditBannerFormProps) => {
   });
 
   const { toast } = useToast();
-  const utils = trpc.useContext();
+  // const utils = trpc.useContext(); // Not strictly needed
 
-  const updateBannerMutation = trpc.adminBanner.update.useMutation({
-    onSuccess: (data) => {
-      utils.adminBanner.getAll.invalidate(); // Invalidate banner list
-      utils.adminBanner.getById.invalidate({ _id: banner._id }); // Invalidate this banner's cache
-      toast({ title: "Success", description: data.message || "Banner updated successfully!" });
-      router.push("/manage/media/banners"); // Navigate back to the list
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        variant: "destructive",
-        description: error.message || "Error while updating banner",
-      });
-    },
-  });
+  const [state, formAction] = useFormState(updateBannerAction, { message: null, errors: undefined, type: null });
 
-  const onSubmit = async (values: EditBannerFormValues) => {
-    updateBannerMutation.mutate({
-      _id: banner._id,
-      name: values.name,
-      desktop_image: values.desktop_image[0], // Server expects a single string
-      mobile_image: values.mobile_image[0],   // Server expects a single string
-      // Include other fields from EditBannerDTO if they exist and are managed by the form
-    });
-  };
+  useEffect(() => {
+    if (state?.type === "success") {
+        toast({ title: "Success", description: state.message });
+        router.push("/manage/media/banners");
+    } else if (state?.type === "error") {
+        toast({
+            title: "Error",
+            variant: "destructive",
+            description: state.message,
+        });
+        if (state.errors) {
+            for (const [key, value] of Object.entries(state.errors)) {
+                 if (value && value.length > 0) {
+                    form.setError(key as keyof EditBannerFormValues, { type: 'manual', message: value.join(', ') });
+                }
+            }
+        }
+    }
+  }, [state, toast, router, form]);
+
+  // As with add form, assuming desktop_image and mobile_image are direct string URL inputs.
 
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className={"w-full md:w-1/2"} // Responsive width
+        action={formAction} // Use the server action
+        // onSubmit={form.handleSubmit(onSubmit)}
+        className={"w-full md:w-1/2"}
       >
-        {/* Changed h4 to a more descriptive title if needed, or remove if page title is sufficient */}
+        <input type="hidden" name="_id" value={banner._id} />
         {/* <h4 className="text-lg font-semibold mb-4">Edit Banner Details</h4> */}
         <div className={"mt-4 flex flex-col gap-y-4"}>
           <TextInput name={"name"} label={"Name"} control={form.control} />
-          <ImagesInput
-            constrain={1}
-            name="desktop_image"
-            label="Desktop Image" // Corrected label
-            control={form.control}
-          />
-          <ImagesInput
-            constrain={1}
-            name="mobile_image"
-            label="Mobile Image" // Corrected label
-            control={form.control}
-          />
+          <TextInput name={"desktop_image"} label={"Desktop Image URL"} control={form.control} placeholder="https://example.com/desktop.jpg"/>
+          <TextInput name={"mobile_image"} label={"Mobile Image URL"} control={form.control} placeholder="https://example.com/mobile.jpg"/>
+          {state?.errors?.desktop_image && <p className="text-sm font-medium text-destructive">{state.errors.desktop_image.join(', ')}</p>}
+          {state?.errors?.mobile_image && <p className="text-sm font-medium text-destructive">{state.errors.mobile_image.join(', ')}</p>}
         </div>
-        <div className="my-6"> {/* Increased margin */}
-          <Button type="submit" disabled={updateBannerMutation.isLoading}>
-            {updateBannerMutation.isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            Update Banner
-          </Button>
+        {state?.errors?._form && (
+            <p className="text-sm font-medium text-destructive pt-2">{state.errors._form.join(', ')}</p>
+        )}
+        <div className="my-6">
+          <SubmitButton />
         </div>
       </form>
       <DevTool control={form.control} />
     </Form>
   );
 };
+
+// SubmitButton component to use useFormStatus
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending ? (
+        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+      ) : null}
+      Update Banner
+    </Button>
+  );
+}
 
 export default EditBannerForm;

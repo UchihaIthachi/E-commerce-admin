@@ -118,12 +118,43 @@ export const getSubCategory = async (_id: string) => {
 
 
 
-export const findSubCategoryBySlug = async (slug: string) => {
-  const query = groq`*[_type == 'subcategory' && slug=="${slug}"]._id`;
-  const data = z.string().array().parse(
-    await dynamicClient.fetch(query)
-  );
-  return data.length > 0;
+export const findSubCategoryBySlug = async (slug: string): Promise<z.infer<typeof GetSubCategoryDTO> | null> => {
+  const query = `
+    query FindSubCategoryBySlug($slug: String!) {
+      allSubcategory(where: { slug: { current: { eq: $slug } } }, limit: 1) {
+        _id
+        name
+        slug {
+          current
+        }
+        category { # Assuming GetSubCategoryDTO expects category with _id and name
+          _id
+          name
+        }
+        seo { # Assuming GetSubCategoryDTO might expect seo
+          title
+          description
+        }
+      }
+    }
+  `;
+  const variables = { slug };
+  try {
+    const response = await graphqlClient.request(query, variables);
+    if (response.allSubcategory && response.allSubcategory.length > 0) {
+      const rawSubCategory = response.allSubcategory[0];
+      // Transform slug from object to string, similar to getSubCategory
+      const transformedSubCategory = {
+        ...rawSubCategory,
+        slug: rawSubCategory.slug?.current || "",
+      };
+      return GetSubCategoryDTO.parse(transformedSubCategory);
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching subcategory by slug "${slug}":`, error);
+    return null;
+  }
 };
 
 export const deleteSubCategory = async (_id: string) => {

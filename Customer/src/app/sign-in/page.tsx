@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, FormEvent } from 'react';
+import React, { useState, FormEvent, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
+import { useAuth } from '@/context/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,10 +16,21 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams(); // For reading callbackUrl
+  const auth = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      const callbackUrl = searchParams.get('callbackUrl') || '/';
+      router.push(callbackUrl);
+    }
+  }, [auth.isAuthenticated, router, searchParams]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
+    auth.clearError(); // Clear global auth error
     setLoading(true);
 
     if (!email || !password) {
@@ -37,19 +49,43 @@ export default function SignInPage() {
       const data = await response.json();
 
       if (response.ok) {
-        // Successful login, redirect to home or dashboard
-        router.push('/');
-        // Or router.refresh() if you want to re-fetch server components
+        await auth.checkSession();
+        // useEffect will handle redirection based on isAuthenticated and callbackUrl
+        // If not using useEffect for this, redirect here:
+        // const callbackUrl = searchParams.get('callbackUrl') || '/';
+        // router.push(callbackUrl);
       } else {
-        setError(data.error || 'Login failed. Please try again.');
+        // Handle Zod validation errors from API if details are provided
+        if (data.details) {
+          // Example: concatenate all email errors if they exist
+          const emailErrors = data.details.email?.join(', ');
+          const passwordErrors = data.details.password?.join(', ');
+          let errorMessage = data.error || 'Login failed.';
+          if (emailErrors) errorMessage += ` Email: ${emailErrors}`;
+          if (passwordErrors) errorMessage += ` Password: ${passwordErrors}`;
+          setError(errorMessage);
+        } else {
+          setError(data.error || 'Login failed. Please try again.');
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login request failed:", err);
-      setError('An unexpected error occurred. Please try again.');
+      const message = err.message || 'An unexpected error occurred. Please try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading or null if auth.isLoading or already authenticated (to avoid flash of form)
+  if (auth.isLoading || auth.isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        {/* You can put a global loading spinner here */}
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">

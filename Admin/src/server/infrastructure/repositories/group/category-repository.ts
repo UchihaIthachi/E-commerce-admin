@@ -108,10 +108,65 @@ export const getCategory = async (_id: string) => {
   }
 };
 
-export const findCategoryBySlug = async (slug: string) => {
-  const query = groq`*[_type == 'category' && slug=="${slug}"]._id`;
-  const data = await dynamicClient.fetch(query);
-  return data.length > 0;
+// Define DTO for Category with Subcategories
+const SubcategoryLiteDTO = z.object({
+  _id: z.string(),
+  name: z.string().nullable().optional(),
+  slug: z.object({ current: z.string() }).nullable().optional(), // Assuming slug object
+});
+
+const CategoryWithSubcategoriesDTO = GetCategoryDTO.extend({ // Assuming GetCategoryDTO has _id, name, slug, seo
+  subcategories: z.array(SubcategoryLiteDTO).optional().nullable(),
+});
+
+export const findCategoryBySlug = async (slug: string): Promise<z.infer<typeof CategoryWithSubcategoriesDTO> | null> => {
+  const query = `
+    query FindCategoryBySlug($slug: String!) {
+      allCategory(where: { slug: { current: { eq: $slug } } }, limit: 1) {
+        _id
+        name
+        slug {
+          current
+        }
+        seo {
+          title
+          description
+        }
+        # Assuming 'subcategories' is a reference field in Sanity linking to subcategory documents
+        # The name of this field in GraphQL might differ based on your Sanity schema
+        # This example assumes a field like 'associatedSubcategories' or similar that resolves to Subcategory type
+        # If subcategories are linked from Subcategory documents to Category (e.g. Subcategory.category->),
+        # then you might need to query allSubcategory filtered by this category's _id.
+        # For this example, let's assume Category has a direct multi-reference to Subcategories:
+        subcategories {
+          _id
+          name
+          slug {
+            current
+          }
+        }
+      }
+    }
+  `;
+  const variables = { slug };
+  try {
+    const response = await graphqlClient.request(query, variables);
+    if (response.allCategory && response.allCategory.length > 0) {
+      const rawCategory = response.allCategory[0];
+      // Transform slug from object to string to match GetCategoryDTO if necessary,
+      // or adjust DTO. GetCategoryDTO already handles this transformation in getCategory.
+      const transformedCategory = {
+        ...rawCategory,
+        slug: rawCategory.slug?.current || null,
+        // subcategories might already be in the correct shape if SubcategoryLiteDTO matches schema
+      };
+      return CategoryWithSubcategoriesDTO.parse(transformedCategory);
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching category by slug "${slug}":`, error);
+    return null;
+  }
 };
 
 type UpdateCategoryParams = z.infer<typeof UpdateCategoryDTO>;

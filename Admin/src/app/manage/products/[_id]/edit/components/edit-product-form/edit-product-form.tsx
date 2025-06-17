@@ -9,16 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 
 import { SelectItem } from "@/components/ui/select";
-import { editProduct, getSubCategoriesForCategory } from "@/lib/api/cloth";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+// import { editProduct, getSubCategoriesForCategory } from "@/lib/api/cloth"; // To be replaced
+import { trpc } from "@/lib/providers"; // Import trpc instance
+import { useRouter } from "next/navigation"; // For redirect
+// import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"; // To be replaced
+import { useQueryClient } from "@tanstack/react-query"; // Keep for now if any non-trpc mutations remain, or remove if all are trpc
 import MediaInput from "@/app/manage/products/components/media-input/media-input";
 import NumberInput from "@/app/manage/components/form/number-input";
 import SelectInput from "@/app/manage/components/form/select-input";
 import TextInput from "@/app/manage/components/form/text-input";
 import VariantsInput from "@/app/manage/products/components/variants-input/variants-input";
-import { getCategories } from "@/lib/api/category";
+// import { getCategories } from "@/lib/api/category"; // To be replaced
 import ImagesInput from "@/app/manage/components/form/images-input";
-import { GetClothFormDTO } from "@/server/application/common/dtos/cloth";
+import { GetClothFormDTO, EditProductDTO as ServerEditProductDTO } from "@/server/application/common/dtos/cloth"; // Import server DTO for type safety
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import TextAreaInput from "@/app/manage/components/form/text-area-input";
@@ -114,84 +117,108 @@ const EditProductFormSchema = z
 type EditProductFormProps = { cloth: z.infer<typeof GetClothFormDTO> };
 
 function EditProductForm({ cloth }: EditProductFormProps) {
+  const router = useRouter();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const EditProductForm = useForm<z.infer<typeof EditProductFormSchema>>({
+  const utils = trpc.useContext();
+  // Prop name is 'cloth' but it's a product, renaming for clarity internally
+  const product = cloth;
+
+  const form = useForm<z.infer<typeof EditProductFormSchema>>({
     resolver: zodResolver(EditProductFormSchema),
-    defaultValues: { ...cloth },
+    // Ensure defaultValues correctly map from the product prop
+    // The product prop (GetClothFormDTO) might have category/subcategory as objects or just IDs.
+    // EditProductFormSchema expects string IDs for category/subcategory.
+    defaultValues: {
+      ...product,
+      category: typeof product.category === 'object' ? product.category?._id : product.category,
+      subcategory: typeof product.subcategory === 'object' ? product.subcategory?._id : product.subcategory,
+      // variants and media need to be mapped to ensure _id is present if it exists on 'product'
+      // This depends on the exact structure of GetClothFormDTO vs EditProductFormSchema/EditProductDTO
+      // For simplicity, direct spread might work if structures are aligned or DTOs are robust.
+      // variants: product.variants.map(v => ({...v, color: v.color?._id, size: v.size?._id })), // Example if DTO needs mapping
+      // media: product.media.map(m => ({...m, color: m.color?._id, images: m.images || []})), // Ensure images is always array
+    },
   });
 
-  const { data: categories, isLoading: isCategoriesLoading } = useQuery({
-    queryKey: ["CATEGORY"],
-    queryFn: getCategories,
+  const { data: categories, isLoading: isCategoriesLoading, error: categoriesError } = trpc.adminCategory.getAll.useQuery();
+
+  const selectedCategory = form.watch("category");
+
+  const { data: subcategories, isLoading: isSubCategoriesLoading, error: subcategoriesError } = trpc.adminSubCategory.getByCategoryId.useQuery(
+    { categoryId: selectedCategory },
+    { enabled: !!selectedCategory }
+  );
+
+  const updateProductMutation = trpc.adminProduct.update.useMutation({
+    onSuccess: (data) => {
+      utils.adminProduct.getAll.invalidate();
+      utils.adminProduct.getById.invalidate({ _id: product._id });
+      toast({ title: "Success", description: data.message });
+      router.push("/manage/products");
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        variant: "destructive",
+        description: error.message || "Error updating product.",
+      });
+    },
   });
-
-  const selectedCategory = EditProductForm.watch("category");
-
-  const { data: subcategories, isLoading: isSubCategoriesLoading } = useQuery({
-    queryKey: ["SUBCATEGORY", selectedCategory],
-    queryFn: () => getSubCategoriesForCategory(selectedCategory),
-    enabled: !!selectedCategory,
-  });
-
-  const { mutate: editProductMutate, isLoading: isEditProductLoading } =
-    useMutation({
-      mutationFn: editProduct,
-      onSuccess: () => {
-        queryClient.invalidateQueries(["CLOTH", cloth._id]);
-        queryClient.invalidateQueries(["CLOTH"]);
-        toast({ title: "Success", variant: "default" });
-      },
-      onError: () => {
-        toast({
-          title: "Error",
-          variant: "destructive",
-          description: "Error while editing product",
-        });
-      },
-    });
 
   const onSubmit = async (values: z.infer<typeof EditProductFormSchema>) => {
-    editProductMutate({
-      _id: cloth._id,
-      product: {
-        ...values,
-        _id: cloth._id,
-        variants: values.variants.map((v, i) => ({
-          ...v,
-          _id: cloth.variants[i]?._id,
-        })),
-        media: values.media.map((v, i) => ({ ...v, _id: cloth.media[i]?._id })),
-      },
-    });
+    // Map form values to ServerEditProductDTO, ensuring _id is at the top level
+    const payload: z.infer<typeof ServerEditProductDTO> = {
+      _id: product._id, // Ensure _id from the original product prop is used
+      name: values.name,
+      sku: values.sku,
+      enabled: values.enabled,
+      description: values.description,
+      price: values.price,
+      discount: values.discount,
+      category: values.category,
+      subcategory: values.subcategory,
+      variants: values.variants.map(v => ({
+        ...v,
+        _id: product.variants.find(pv => pv.color === v.color && pv.size === v.size)?._id // Try to find existing variant _id
+      })),
+      media: values.media.map(m => ({
+        ...m,
+        _id: product.media.find(pm => pm.color === m.color)?. _id // Try to find existing media _id
+      })),
+      seo: values.seo,
+    };
+    updateProductMutation.mutate(payload);
   };
 
   return (
     <div>
-      <Form {...EditProductForm}>
+      <Form {...form}>
         <form
-          onSubmit={EditProductForm.handleSubmit(onSubmit)}
-          className="w-1/2"
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="w-full lg:w-3/4 xl:w-1/2" // Responsive width
         >
           <h4>Basic Information</h4>
           <div className="flex flex-col gap-y-4">
-            <TextInput name="name" placeholder="Frill Dress" label="Name" />
-            <TextInput name="sku" placeholder="SKU" label="SKU" />
-            <SwitchInput name={`enabled`} label="Enabled" />            
+            <TextInput control={form.control} name="name" placeholder="Frill Dress" label="Name" />
+            <TextInput control={form.control} name="sku" placeholder="SKU" label="SKU" />
+            <SwitchInput control={form.control} name={`enabled`} label="Enabled" />
             <TextAreaInput
+              control={form.control}
               name={"description"}
               label={"Description"}
               placeholder={"lorem ipsum dolor sit amet"}
             />
-            <NumberInput name="price" label="Price" />
-            <NumberInput name="discount" label="Discount" />
+            <NumberInput control={form.control} name="price" label="Price" />
+            <NumberInput control={form.control} name="discount" label="Discount" />
 
             <SelectInput
-              disabled={isCategoriesLoading}
+              control={form.control}
+              disabled={isCategoriesLoading || !!categoriesError}
               name="category"
               placeholder="Select a category"
               label="Category"
             >
+              {categoriesError && <p className="text-sm text-destructive">Error loading categories.</p>}
               {categories?.map((el) => (
                 <SelectItem key={el._id} value={el._id}>
                   {el.name}
@@ -200,11 +227,13 @@ function EditProductForm({ cloth }: EditProductFormProps) {
             </SelectInput>
 
             <SelectInput
-              disabled={isSubCategoriesLoading}
+              control={form.control}
+              disabled={isSubCategoriesLoading || !selectedCategory || !!subcategoriesError}
               name="subcategory"
               placeholder="Select a subcategory"
               label="Subcategory"
             >
+              {subcategoriesError && <p className="text-sm text-destructive">Error loading subcategories.</p>}
               {subcategories?.map((el) => (
                 <SelectItem key={el._id} value={el._id}>
                   {el.name}
@@ -215,24 +244,26 @@ function EditProductForm({ cloth }: EditProductFormProps) {
           <div className="mt-8">
             <h4>Variants</h4>
             <div>
-              <VariantsInput name="variants" label="Variants" />
+              <VariantsInput control={form.control} name="variants" label="Variants" />
             </div>
           </div>
           <div className="mt-8">
             <h4>Media</h4>
-            <MediaInput name="media" label="Media" />
+            <MediaInput control={form.control} name="media" label="Media" />
           </div>
           <div className="mt-8">
             <h4>SEO</h4>
             <div className="grid gap-y-2">
-              <TextInput name="seo.title" placeholder="" label="Title" />
+              <TextInput control={form.control} name="seo.title" placeholder="" label="Title" />
               <TextInput
+                control={form.control}
                 name="seo.description"
                 placeholder=""
                 label="Meta Description"
               />
-              <TextInput name="seo.og_title" placeholder="" label="OG Title" />
+              <TextInput control={form.control} name="seo.og_title" placeholder="" label="OG Title" />
               <TextInput
+                control={form.control}
                 name="seo.og_description"
                 placeholder=""
                 label="OG Description"
@@ -241,15 +272,17 @@ function EditProductForm({ cloth }: EditProductFormProps) {
                 <h6>OG Image</h6>
                 <div className={"grid grid-cols-1 gap-y-4"}>
                   <ImagesInput
+                    control={form.control}
                     constrain={1}
                     name="seo.og_image.image"
                     label="Image"
                   />
                   <div className="grid grid-cols-2 gap-x-4 ">
-                    <NumberInput name="seo.og_image.width" label="Width" />
-                    <NumberInput name="seo.og_image.height" label="height" />
+                    <NumberInput control={form.control} name="seo.og_image.width" label="Width" />
+                    <NumberInput control={form.control} name="seo.og_image.height" label="height" />
                   </div>
                   <TextInput
+                    control={form.control}
                     name={"seo.og_image.alt"}
                     label={"Alternative Text"}
                   />
@@ -258,18 +291,17 @@ function EditProductForm({ cloth }: EditProductFormProps) {
             </div>
           </div>
 
-          <div className="my-4">
-            <Button type="submit">
-              {isEditProductLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Save Changes"
-              )}
+          <div className="my-6"> {/* Increased margin */}
+            <Button type="submit" disabled={updateProductMutation.isLoading}>
+              {updateProductMutation.isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Save Changes
             </Button>
           </div>
         </form>
       </Form>
-      <DevTool control={EditProductForm.control} />
+      <DevTool control={form.control} /> {/* Use renamed form instance */}
     </div>
   );
 }

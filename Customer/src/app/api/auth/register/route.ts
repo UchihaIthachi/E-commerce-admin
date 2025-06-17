@@ -1,24 +1,29 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'; // Import NextRequest
 import bcrypt from 'bcryptjs';
-import prisma from '@/server/infrastructure/clients/prisma'; // Assuming '@/' is configured for 'Customer/src/'
+import prisma from '@/server/infrastructure/clients/prisma';
+import { registerLimiter, getClientIp, consumeLimiter } from '@/lib/rate-limiter'; // Import rate limiter
+import { RegisterSchema } from '@/lib/validators/auth-schemas';
 import { Role } from '@prisma/client';
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { email, password, name } = body;
+export async function POST(request: NextRequest) { // Changed type to NextRequest
+  const clientIp = getClientIp(request);
+  const isAllowed = await consumeLimiter(registerLimiter, clientIp, 'Too many registration attempts. Please try again later.');
 
-    // 1. Validate inputs
-    if (!email || !password || !name) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  if (!isAllowed) {
+    return NextResponse.json({ error: 'Too many registration attempts. Please try again later.' }, { status: 429 });
+  }
+
+  try {
+    const rawBody = await request.json();
+    const validationResult = RegisterSchema.safeParse(rawBody);
+
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: validationResult.error.flatten().fieldErrors },
+        { status: 400 }
+      );
     }
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'Password must be at least 6 characters long' }, { status: 400 });
-    }
-    // Basic email format validation (can be more robust)
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
-    }
+    const { email, password, name } = validationResult.data; // Use validated data
 
     // 2. Check if user already exists
     const existingUser = await prisma.user.findUnique({

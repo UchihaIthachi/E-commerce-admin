@@ -4,11 +4,12 @@ import ActionDropdown from "@/app/manage/components/table/action-dropdown";
 import DeleteAction from "@/app/manage/components/table/delete-action";
 import EditAction from "@/app/manage/components/table/edit-action";
 import {DropdownMenuItem} from "@/components/ui/dropdown-menu";
-import {deleteCategory} from "@/lib/api/category";
+// import {deleteCategory} from "@/lib/api/category"; // Unused import
 import {ColumnDef} from "@tanstack/react-table";
 import {z} from "zod";
 import {GetBannerDTO} from "@/server/application/common/dtos/banner";
-import {deleteBanner} from "@/lib/api/banner";
+// import {deleteBanner} from "@/lib/api/banner"; // No longer needed
+import { deleteBannerAction } from "../actions"; // Import server action
 
 export const columns: ColumnDef<z.infer<typeof GetBannerDTO>>[] = [
     {
@@ -31,12 +32,12 @@ export const columns: ColumnDef<z.infer<typeof GetBannerDTO>>[] = [
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         className="text-red-500"
+                        // onClick={(e) => e.stopPropagation()} // Prevent dropdown close if DeleteAction handles it internally
                     >
                         <DeleteAction
                             _id={_id}
-                            queryKey="BANNER"
-                            mutationFn={deleteBanner}
-                            message="This category is referenced by other documents"
+                            action={deleteBannerAction}
+                            itemName="banner"
                         />
                     </DropdownMenuItem>
                 </ActionDropdown>

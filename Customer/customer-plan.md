@@ -14,9 +14,9 @@ This document outlines a detailed strategic plan for developing and enhancing th
 
 ### 1. User Authentication (Custom with Prisma)
 
--   **Objective:** Implement a secure and seamless custom authentication system using email/password.
+-   **Objective:** A custom JWT-based authentication system (credentials & Google OAuth2) using Next.js API Route Handlers is *already in place* and has been reviewed. This section outlines its current structure and planned refinements.
 -   **Schema Interaction:** Leverages Prisma models: `User` (profile), `Account` (credentials, provider type), `Session` (active logins), `VerificationToken` (for email verification/password reset).
--   **Key API Routes (to be created/verified in `Customer/src/app/api/auth/`):**
+-   **Key API Routes (are implemented in `Customer/src/app/api/auth/` and include):**
     -   `POST /api/auth/register`:
         -   Input: email, password, name.
         -   Action: Hash password. Create `User` and `Account` records in Prisma. Optionally, send verification email (using `VerificationToken`).
@@ -24,7 +24,7 @@ This document outlines a detailed strategic plan for developing and enhancing th
         -   Input: email, password.
         -   Action: Validate credentials against `Account`. If valid, create `Session` record. Return session token (e.g., JWT or opaque token stored in HTTPOnly cookie).
     -   `POST /api/auth/logout`:
-        -   Action: Invalidate/delete `Session` record. Clear session cookie.
+        -   Action: Clears client-side session cookies. Server-side session invalidation to be reviewed/enhanced to ensure robust lookup and deletion of hashed refresh tokens from the `Session` table.
     -   `GET /api/auth/session`:
         -   Action: Verify current session token, return user data if valid.
     -   `POST /api/auth/request-password-reset`:
@@ -34,33 +34,33 @@ This document outlines a detailed strategic plan for developing and enhancing th
         -   Input: token, new password.
         -   Action: Verify token, update password in `Account`.
 -   **Frontend Components:**
-    -   Develop custom sign-in, sign-up, and password reset forms/pages.
-    -   **Action Item:** Review and remove/refactor existing Clerk-related files in `Customer/src/app/sign-in/` and `Customer/src/app/sign-up/` to avoid conflicts.
+    -   Custom sign-in, sign-up, and password reset forms/pages are in use.
+    -   **Action Item (Completed):** Reviewed `Customer/src/app/sign-in/` & `sign-up` pages; they are already using the custom authentication flow and have no Clerk-related conflicts.
 -   **Session Management:**
-    -   Use secure HTTPOnly cookies for session tokens.
-    -   Implement session expiry and renewal logic.
+    -   Uses secure HTTPOnly cookies for session tokens (access and refresh).
+    -   Session expiry and refresh token rotation are implemented.
 
 #### Refresh Token Mechanism (for Email/Password)
--   **Objective:** Enhance session security and user experience by implementing refresh tokens alongside access tokens for email/password authentication.
+-   **Objective:** Enhance session security and user experience by implementing refresh tokens alongside access tokens for email/password authentication. (This is implemented).
 -   **Token Strategy:**
-    -   Access Token: Short-lived, stored in HTTPOnly cookie (or client memory).
-    -   Refresh Token: Longer-lived, stored in secure HTTPOnly cookie AND hashed/encrypted in DB (associated with `Session` or `Account`).
+    -   Access Token: Short-lived, stored in HTTPOnly cookie.
+    -   Refresh Token: Longer-lived, stored in secure HTTPOnly cookie AND hashed in the `Session` table.
 -   **API Endpoint Updates & Additions (in `Customer/src/app/api/auth/`):**
-    -   `POST /api/auth/login`: (Update) Generate and return access token; set secure HTTPOnly cookie for refresh token; store hashed refresh token in DB.
-    -   `POST /api/auth/refresh`: (New) Input: refresh token from cookie. Action: Validate against DB. If valid, issue new access token (and optionally rotate refresh token).
-    -   `POST /api/auth/logout`: (Update) Invalidate session, clear access/refresh token cookies, invalidate refresh token in DB.
--   **Client-Side Logic:** Handle 401s by calling `/api/auth/refresh`, retry original request if successful, else redirect to login.
--   **Security Considerations:** Refresh token rotation, expiry, revocation mechanism, rate limiting for refresh endpoint.
+    -   `POST /api/auth/login`: (Implemented) Generate and return access token; set secure HTTPOnly cookie for refresh token; store hashed refresh token in DB.
+    -   `POST /api/auth/refresh`: (Implemented) Input: refresh token from cookie. Action: Validate against DB. If valid, issue new access token and rotate refresh token.
+    -   `POST /api/auth/logout`: (Implemented) Invalidate session, clear access/refresh token cookies, mark refresh token as invalid/delete from DB.
+-   **Client-Side Logic:** Handles 401s by calling `/api/auth/refresh`, retries original request if successful, else redirects to login.
+-   **Security Considerations:** Current implementation includes refresh token rotation and hashing. Further review planned for comprehensive revocation strategies and robust rate limiting for all sensitive auth endpoints.
 
 #### Social Login - 'Login with Google'
--   **Objective:** Allow users to register and log in using their Google accounts.
--   **OAuth 2.0 / OpenID Connect Flow:** Describe the redirect flow (Frontend -> `/api/auth/google/login` -> Google -> `/api/auth/google/callback` -> Backend processing).
--   **API Endpoints (New in `Customer/src/app/api/auth/google/`):**
+-   **Objective:** Allow users to register and log in using their Google accounts. (This is implemented).
+-   **OAuth 2.0 / OpenID Connect Flow:** Redirect flow (Frontend -> `/api/auth/google/login` -> Google -> `/api/auth/google/callback` -> Backend processing) is implemented.
+-   **API Endpoints (Implemented in `Customer/src/app/api/auth/google/`):**
     -   `GET /api/auth/google/login`: Redirects to Google's OAuth URL.
     -   `GET /api/auth/google/callback`: Handles callback from Google. Exchanges auth code for tokens, fetches Google user info. Checks if user exists in local DB via `Account` (`provider: 'google'`, `providerAccountId`). If yes, logs in (creates session, issues app tokens/cookies). If no, creates new `User` and `Account` (auto-registration), then logs in.
 -   **Prisma Schema Interaction:** Uses `Account` fields (`provider`, `providerAccountId`) and `User` model.
--   **Frontend Components:** "Login with Google" button.
--   **Configuration:** Secure storage of Google Client ID/Secret, Google Console redirect URI setup.
+-   **Frontend Components:** "Login with Google" button implemented.
+-   **Configuration:** Secure storage of Google Client ID/Secret, Google Console redirect URI setup is in place.
 
 ### 2. User Account Management
 
@@ -85,80 +85,59 @@ This document outlines a detailed strategic plan for developing and enhancing th
 
 -   **Objective:** Display products and categories effectively, sourced from Sanity CMS.
 -   **Data Fetching:**
-    -   Standardize on GraphQL for all Sanity reads for consistency and precision. Utilize the `graphqlClient` (configured in Admin, usable by Customer backend).
+    -   Standardize on GraphQL for all Sanity reads for consistency and precision. Utilize the `graphqlClient`.
     -   Define GraphQL queries for: product listings (by category, search), single product details (including variants, images, description), category listings.
-    -   Data fetching functions likely in `Customer/src/lib/api/` or new service modules in `Customer/src/server/application/features/product` (if adopting a heavier backend structure like Admin).
+    -   Data fetching functions likely in `Customer/src/lib/api/` or new service modules in `Customer/src/server/application/features/product`.
 -   **Frontend Pages & Components:**
-    -   Home Page (`Customer/src/app/page.tsx`): Display featured products, categories, banners (e.g., using `Billboard.tsx`).
-    -   Category Pages (`/category/{slug}`): List products within a category. Utilize `ProductCard.tsx`.
-    -   Product Detail Pages (`/product/{slug}`): Show detailed product information, images (`ProductCarousel.tsx`, `ProductDetailCard.tsx`), variants, add-to-cart functionality.
+    -   Home Page (`Customer/src/app/page.tsx`): Display featured products, categories, banners.
+    -   Category Pages (`/category/{slug}`): List products within a category.
+    -   Product Detail Pages (`/product/{slug}`): Show detailed product information.
     -   Search Results Page.
 -   **Existing Components to Leverage:** `ProductCard.tsx`, `ProductCarousel.tsx`, `ProductDetailCard.tsx`, `CategoryCard.tsx`.
 
 ### 4. Shopping Cart & Checkout
 
 -   **Objective:** Provide a seamless cart and checkout experience.
--   **Client-Side Cart Management:**
-    -   Utilize `Customer/src/store/useCartStore.ts` (Zustand) for managing cart items, quantities, and subtotal on the client.
-    -   `AddToCartButton.tsx` will interact with this store.
-    -   `CartSheet.tsx` or a dedicated `/cart` page will display cart contents using `CartProductCard.tsx` and `CartOrderTable.tsx`.
--   **Backend Cart Persistence (Optional but Recommended):**
-    -   Consider API routes to sync client-side cart with Prisma `Cart` and `CartItem` models for logged-in users, allowing cart persistence across devices.
-    -   `POST /api/cart/sync`: Syncs local cart with DB.
-    -   `GET /api/cart`: Fetches user's cart from DB.
--   **Checkout Process (Multi-Step):**
-    1.  **Shipping Information:** Collect/select shipping address (interacts with `Address` model).
-    2.  **Shipping Method:** Select delivery/pickup.
-    3.  **Payment Method:** Select payment option (e.g., COD, Credit Card - initially COD might be simpler).
-    4.  **Order Review & Confirmation:** Display final order details.
--   **Order Creation API Route:**
-    -   `POST /api/orders/create`:
-        -   Input: Cart items, shipping address ID, shipping method, payment method details.
-        -   Action: Validate data. Create `Order`, `Delivery`/`Pickup`, and associate `CartItem` records in Prisma. Clear client cart. Send order confirmation email.
--   **Payment Gateway Integration (Future):** For credit cards, integrate with a payment gateway (e.g., Stripe, Razorpay - `razorpay.png` is in public assets). This will involve client-side SDK and server-side webhook handling.
+-   **Client-Side Cart Management:** Utilize `Customer/src/store/useCartStore.ts` (Zustand).
+-   **Backend Cart Persistence (Optional but Recommended):** API routes to sync client cart with Prisma `Cart` for logged-in users.
+-   **Checkout Process (Multi-Step):** Shipping info, shipping method, payment, review.
+-   **Order Creation API Route:** `POST /api/orders/create`.
+-   **Payment Gateway Integration (Future):** Stripe, Razorpay.
 
 ### 5. SEO & Content Presentation (Refined)
 
--   **Dynamic Page Metadata:**
-    -   Implement `generateMetadata` in Next.js page components (products, categories, home) to fetch SEO fields (title, description, OpenGraph tags) from Sanity.
-    -   Ensure Sanity schemas for products/categories include dedicated SEO fields.
--   **Rendering Strategies:**
-    -   Product/Category Pages: ISR.
-    -   Home Page: ISR or SSR.
-    -   Static Pages: SSG.
--   **Advanced SEO (`next-seo`):**
-    -   Integrate `next-seo` for JSON-LD structured data (Product schema, BreadcrumbList schema) on relevant pages.
--   **Sitemaps & `robots.txt`:**
-    -   Verify `Customer/src/app/robots.ts` is correctly configured.
-    -   Implement `Customer/src/app/sitemap.ts` to dynamically generate sitemap from Sanity content (products, categories, public pages).
+-   **Dynamic Page Metadata:** `generateMetadata` for products, categories, home from Sanity.
+-   **Rendering Strategies:** ISR, SSR, SSG as appropriate.
+-   **Advanced SEO (`next-seo`):** JSON-LD for Product, BreadcrumbList.
+-   **Sitemaps & `robots.txt`:** Verify `robots.ts`, implement dynamic `sitemap.ts`.
 
 ## III. Customer Application Backend (`Customer/src/server/` & `Customer/src/app/api/`)
 
--   **Acknowledge and Structure:** The Customer application has its own backend logic.
--   **API Route Organization:** Group API routes logically (e.g., `/api/auth/*`, `/api/account/*`, `/api/products/*`, `/api/cart/*`, `/api/orders/*`).
--   **Prisma Client Usage:** API routes will import and use the Prisma client (from `Admin/src/server/infrastructure/clients/prisma.ts` or a shared location if refactored) for database operations.
--   **Repository Pattern (Recommended):** Consider implementing a repository pattern within `Customer/src/server/infrastructure/repositories/` for customer-specific database queries to keep API route handlers clean.
--   **Error Handling:** Implement consistent error handling and response formats for API routes.
+-   **API Route Organization:** Logical grouping (auth, account, products, cart, orders).
+-   **Prisma Client Usage:** Direct use of Prisma client.
+-   **Repository Pattern (Recommended):** For customer-specific queries.
+-   **Error Handling:** Consistent error handling for API routes.
 
 ## IV. Other Considerations
 
 -   **`/manage` section (`Customer/src/app/manage/`):**
-    -   **Action Item:** Clarify the purpose of this directory. If it's not for general customer use, it might be out of scope for this plan or require separate planning. If it's for specific customer roles (e.g., B2B customers managing their own orders), this needs to be detailed.
--   **Planned Features (from previous plan, still relevant):**
-    -   Improved Customer Dashboard (covered in Account Management).
-    -   Optimized UX (AI/ML Search, Intuitive Navigation - future phases).
-    -   Enhanced Analytics.
-    -   Mobile Application (long-term future goal).
--   **UI Components:** Leverage existing components in `Customer/src/components/` and ShadCN UI.
+    -   **Action Item:** Clarify purpose. If not for general customer use, out of scope or separate planning.
+-   **Planned Features:** Improved Dashboard, Optimized UX (future), Analytics, Mobile App (future).
+-   **UI Components:** Leverage existing and ShadCN UI.
 
 ## V. Implementation Roadmap (Phased Approach - More Granular)
 
-### Phase 1: Authentication & Core Profile
-1.  **Setup Custom Email/Password Auth API:** Implement register, login, logout, session API routes. **Include refresh token mechanism.**
-2.  **Setup 'Login with Google' API:** Implement `/google/login` and `/google/callback` routes, including auto-registration.
-3.  **Frontend Auth Pages:** Create sign-in, sign-up forms (including "Login with Google" button).
-4.  **Basic Profile Management:** API and UI for viewing/editing basic user profile.
-5.  **Action Item:** Remove/Refactor Clerk files from `Customer/src/app/sign-in` & `sign-up`.
+### Phase 1: Authentication & Core Profile (Verification & Refinement)
+1.  **Custom Email/Password Auth API:** (Largely Implemented) Undergoing final review, hardening, and documentation. Includes refresh token mechanism.
+2.  **'Login with Google' API:** (Largely Implemented) Undergoing final review, hardening, and documentation.
+3.  **Frontend Auth Pages:** (Implemented) Sign-in, sign-up forms (including "Login with Google" button) are functional.
+4.  **Basic Profile Management:** (To be implemented) API and UI for viewing/editing basic user profile.
+5.  **Remove/Refactor Clerk files:** (Completed) `Customer/src/app/sign-in` & `sign-up` use custom auth.
+6.  **Enhance server-side logout to reliably invalidate sessions.** (New Action Item) Focus on robust refresh token invalidation from `Session` table.
+7.  **Implement robust input validation (e.g., using Zod) for all auth API endpoints.** (New Action Item)
+8.  **Implement Rate Limiting for Auth Endpoints:** Apply rate limiting to sensitive authentication API routes (e.g., login, register, refresh, request-password-reset) to mitigate abuse. (New Action Item)
+9.  **Ensure comprehensive error handling and logging for auth flows.** (New Action Item)
+10. **Develop/verify client-side UI and state management for authentication (context, redirects, error display).** (New Action Item)
 
 ### Phase 2: Product Display & Sanity Integration
 1.  **GraphQL Queries for Sanity:** Define and implement queries for products, categories.

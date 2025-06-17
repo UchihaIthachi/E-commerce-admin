@@ -2,31 +2,42 @@
 
 import {columns} from "./components/columns";
 import {DataTable} from "./components/data-table";
-import {getClothes} from "@/lib/api/cloth";
-import {useQuery} from "@tanstack/react-query";
-import PageLayout from '@/app/manage/components/PageLayout'; // Import PageLayout
-import LoadingSpinner from '@/components/ui/LoadingSpinner'; // Import LoadingSpinner
+// import {getClothes} from "@/lib/api/cloth"; // No longer needed
+// import {useQuery} from "@tanstack/react-query"; // No longer needed
+import { trpc } from "@/lib/providers"; // Import trpc instance
+import PageLayout from '@/app/manage/components/PageLayout';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { ProductListItem } from "@/server/trpc/routers/admin/productRouter"; // Import type for enabledProducts calculation
 
 function ProductsPage() {
-    const {data: clothes, isLoading} = useQuery({
-        queryKey: ["CLOTH"],
-        queryFn: getClothes,
-    });
+    const {
+      data: products, // Renamed from clothes to products
+      isLoading,
+      error, // Add error handling
+    } = trpc.adminProduct.getAll.useQuery(
+      undefined, // No input/filters for now, add if needed
+      // {staleTime: 5 * 60 * 1000} // Example: 5 minutes stale time
+    );
 
-    const enabledProducts = clothes?.filter((product: { enabled: boolean; }) => product.enabled == true).length
-
-    // TODO: Implement headerActions for the "Create Cloth" button
-    // For now, the button is part of DataTable or its surrounding div,
-    // but ideally it moves to PageLayout's headerActions prop.
+    const enabledProducts = products?.filter((product: ProductListItem) => product.enabled === true).length;
 
     return (
         <PageLayout title="Products">
-            {isLoading ? (
+            {isLoading && ( // Simplified loading display
                 <div className="flex justify-center items-center h-full">
                     <LoadingSpinner size="h-12 w-12" />
                 </div>
-            ) : (
-                <DataTable columns={columns} data={clothes!} enabledProductsCount = {enabledProducts!}/>
+            )}
+            {error && (
+                <div className="text-red-500 text-center p-4">
+                    Error fetching products: {error.message}
+                </div>
+            )}
+            {!isLoading && !error && products && (
+                <DataTable columns={columns} data={products} enabledProductsCount = {enabledProducts || 0}/>
+            )}
+            {!isLoading && !error && !products && (
+                 <div className="text-center p-4">No products found.</div>
             )}
         </PageLayout>
     );

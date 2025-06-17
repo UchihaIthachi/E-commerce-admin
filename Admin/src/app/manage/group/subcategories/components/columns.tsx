@@ -4,7 +4,8 @@ import ActionDropdown from "@/app/manage/components/table/action-dropdown";
 import DeleteAction from "@/app/manage/components/table/delete-action";
 import EditAction from "@/app/manage/components/table/edit-action";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { deleteSubCategory } from "@/lib/api/subcategory";
+// import { deleteSubCategory } from "@/lib/api/subcategory"; // No longer needed
+import { deleteSubcategoryAction } from "../actions"; // Import server action
 import { GetCategoryDTO } from "@/server/application/common/dtos/category";
 import { ColumnDef } from "@tanstack/react-table";
 import { z } from "zod";
@@ -42,11 +43,16 @@ export const columns: ColumnDef<z.infer<typeof GetSubCategoriesDTO>>[] = [
             <EditAction href={`/manage/group/subcategories/${_id}/edit`} text="Edit" />
           </DropdownMenuItem>
           <DropdownMenuItem className="text-red-500">
+            {/*
+              The DeleteAction component now directly takes a server action.
+              Client-side toast for success/error should be handled by the page/component
+              that invokes actions and uses useFormState, or by the DeleteAction if it's adapted further.
+              For now, DeleteAction's internal form will call the server action.
+            */}
             <DeleteAction
               _id={_id}
-              queryKey="SUBCATEGORY"
-              mutationFn={deleteSubCategory}
-              message="This subcategory is referenced by other documents"
+              action={deleteSubcategoryAction}
+              itemName="subcategory" // Optional: for a more specific confirmation message
             />
           </DropdownMenuItem>
         </ActionDropdown>

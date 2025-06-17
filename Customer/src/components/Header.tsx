@@ -5,6 +5,8 @@ import CartSheet from "./cart/CartSheet";
 import Navbar from "./Navbar";
 import SearchInput from "./SearchInput";
 import { SITE_NAME } from "@/lib/constants";
+import AuthNav from "./AuthNav";
+import { ThemeToggle } from "./ThemeToggle"; // Import ThemeToggle
 
 export default async function Header() {
   // const categories = await getCategories();
@@ -16,11 +18,13 @@ export default async function Header() {
           <h1 className="text-2xl font-bold italic">{SITE_NAME}</h1>
         </Link>
         {/* <Navbar categories={categories} /> */}
-        <div className="ml-0 flex flex-row gap-2 md:ml-auto">
+        <div className="ml-0 flex flex-row items-center gap-2 md:ml-auto">
           <div suppressHydrationWarning className="hidden md:block">
             <SearchInput />
           </div>
           <CartSheet />
+          <AuthNav />
+          <ThemeToggle /> {/* Add ThemeToggle component here */}
         </div>
       </nav>
     </header>

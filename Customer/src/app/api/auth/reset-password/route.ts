@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/server/infrastructure/clients/prisma';
 import bcrypt from 'bcryptjs';
+import { ResetPasswordSchema } from '@/lib/validators/auth-schemas'; // Import Zod schema
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { token, newPassword } = body;
+    const rawBody = await request.json();
+    const validationResult = ResetPasswordSchema.safeParse(rawBody);
 
-    // 1. Validate inputs
-    if (!token || !newPassword) {
-      return NextResponse.json({ error: 'Token and new password are required' }, { status: 400 });
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: validationResult.error.flatten().fieldErrors },
+        { status: 400 }
+      );
     }
-    if (newPassword.length < 6) {
-      return NextResponse.json({ error: 'Password must be at least 6 characters long' }, { status: 400 });
-    }
+    const { token, newPassword } = validationResult.data; // Use validated data
 
     // 2. Find the VerificationToken in the DB by the token value
     const verificationToken = await prisma.verificationToken.findUnique({

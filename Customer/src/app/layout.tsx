@@ -14,6 +14,8 @@ import {
   SITE_NAME,
   SITE_URL,
 } from "@/lib/constants";
+import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/components/theme-provider"; // Import ThemeProvider
 
 const fontSans = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -63,13 +65,22 @@ export default function RootLayout({
           fontSans.className,
         )}
       >
-        <main className="mx-auto max-w-7xl">
-          <Header />
-          {children}
-          <Footer />
-        </main>
-        <FloatingBar />
-        <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <main className="mx-auto max-w-7xl">
+              <Header />
+              {children}
+              <Footer />
+            </main>
+            <FloatingBar />
+            <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
