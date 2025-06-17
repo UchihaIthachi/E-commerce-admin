@@ -81,6 +81,17 @@ export const GET_PRODUCT_BY_SLUG_QUERY = `
   }
 `;
 
+export const GET_ALL_BANNERS_QUERY = `
+  query GetAllBanners {
+    allBanner(sort: {_createdAt: ASC}) { // Assuming default Sanity type name and adding a sort order
+      _id
+      name
+      desktop_image
+      mobile_image
+    }
+  }
+`;
+
 export const SEARCH_PRODUCTS_QUERY = `
   query SearchProducts($query: String!, $limit: Int = 20) {
     allProduct(

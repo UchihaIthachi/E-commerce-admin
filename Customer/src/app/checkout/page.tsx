@@ -128,8 +128,8 @@ export default function CheckoutPage() {
         name: item.name,
         slug: item.slug,
         // Correctly send unit price
-        price: item.quantity > 0 ? item.price / item.quantity : 0,
-        originalPrice: item.quantity > 0 ? item.originalPrice / item.quantity : 0,
+        price: item.price,
+        originalPrice: item.originalPrice,
         imageUrl: item.imageUrl,
         imageAlt: item.imageAlt,
         quantity: item.quantity,
@@ -153,7 +153,7 @@ export default function CheckoutPage() {
         setSuccessInfo(`Order placed successfully! Order ID: ${result.orderId}`);
         clearCart(); // Clear cart from Zustand store
         // Redirect to a dedicated order confirmation page
-        router.push(`/order-confirmation?orderId=${result.orderId}`); // Example redirect
+        router.push(`/order-confirmation/${result.orderId}`); // Example redirect
       } else {
         setError(result.error || 'Failed to place order.');
         if (result.details) console.error("Order submission validation errors:", result.details);

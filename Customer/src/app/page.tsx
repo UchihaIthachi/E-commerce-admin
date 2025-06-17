@@ -4,9 +4,9 @@ import CategoryCardSection from "@/components/category/CategoryCardSection";
 import ProductMarquee from "@/components/product/ProductsMarqueeWrapper";
 
 // Import new components and functions
-import { getFeaturedProducts } from "@/lib/sanity/client";
+import { getFeaturedProducts, getAllBanners } from "@/lib/sanity/client"; // Added getAllBanners
 import ProductCard from "@/components/product/ProductCard";
-import type { Product } from "@/lib/sanity/client";
+import type { Product, SanityBanner } from "@/lib/sanity/client"; // Added SanityBanner
 
 // Component to display a list/grid of products
 function FeaturedProductsSection({ products }: { products: Product[] }) {
@@ -32,11 +32,19 @@ function FeaturedProductsSection({ products }: { products: Product[] }) {
 
 export default async function Home() {
   let featuredProducts: Product[] = [];
+  let allBanners: SanityBanner[] = [];
+
   try {
+    // Fetch in parallel if desired, or sequentially
     featuredProducts = await getFeaturedProducts(4);
   } catch (error) {
     console.error("Failed to fetch featured products for Home page:", error);
-    // Optionally, render a specific error message or fallback UI
+  }
+
+  try {
+    allBanners = await getAllBanners();
+  } catch (error) {
+    console.error("Failed to fetch banners for Home page:", error);
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -82,7 +90,7 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
       <main className=""> {/* Removed px-2 from main, assuming container in section or page root handles padding */}
-        <Billboard />
+        <Billboard banners={allBanners} />
         <ProductMarquee />
         <FeaturedProductsSection products={featuredProducts} />
         <CategoryCardSection />

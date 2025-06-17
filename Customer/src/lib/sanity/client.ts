@@ -13,6 +13,7 @@ import {
   GET_ALL_SUBCATEGORIES_QUERY,
   GET_ALL_ACTIVE_PRODUCTS_FOR_SITEMAP_QUERY,
   SEARCH_PRODUCTS_QUERY, // Added import
+  GET_ALL_BANNERS_QUERY,
 } from './queries';
 
 // --- TypeScript Interfaces (Basic versions based on queries) ---
@@ -128,6 +129,13 @@ export interface SitemapProduct {
   _updatedAt: string;
 }
 
+export interface SanityBanner {
+  _id: string;
+  name?: string;
+  desktop_image?: string;
+  mobile_image?: string;
+}
+
 // --- Sanity Client Configuration ---
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET;
@@ -197,6 +205,23 @@ export async function getFeaturedProducts(limit: number = 4): Promise<Product[]>
     return result?.allProduct || [];
   } catch (error) {
     console.error('Error fetching featured products:', error);
+    return [];
+  }
+}
+
+export async function getAllBanners(): Promise<SanityBanner[]> {
+  if (!projectId || !dataset) {
+    console.error("Sanity client not configured for getAllBanners.");
+    return [];
+  }
+  try {
+    // Ensure GET_ALL_BANNERS_QUERY is imported if not already
+    const result = await sanityClient.fetch<{ allBanner: SanityBanner[] }>(
+      GET_ALL_BANNERS_QUERY // Make sure this query is defined and imported
+    );
+    return result?.allBanner || [];
+  } catch (error) {
+    console.error('Error fetching all banners:', error);
     return [];
   }
 }

@@ -7,12 +7,21 @@ import {
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import Image from "next/image";
-import BuyInBulk from "../../public/banner/buyinbulk.webp";
-import Customize from "../../public/banner/customize.webp";
-import EcoFriendly from "../../public/banner/Eco-Friendly.webp";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import type { SanityBanner } from "@/lib/sanity/client"; // Import the new type
 
-export default function Billboard() {
+interface BillboardProps {
+  banners: SanityBanner[];
+}
+
+export default function Billboard({ banners }: BillboardProps) {
+  if (!banners || banners.length === 0) {
+    // Optional: render a fallback, or null to render nothing
+    // For now, returning null if no banners.
+    // You could also return a placeholder component.
+    return null;
+  }
+
   return (
     <div className="flex-1 py-4">
       <Carousel
@@ -29,42 +38,23 @@ export default function Billboard() {
         ]}
       >
         <CarouselContent>
-          <CarouselItem>
-            <AspectRatio ratio={2 / 1}>
-              <Image
-                className="w-full rounded-lg"
-                src={EcoFriendly}
-                alt=""
-                priority
-                width={1920}
-                height={960}
-              />
-            </AspectRatio>
-          </CarouselItem>
-          <CarouselItem>
-            <AspectRatio ratio={2 / 1}>
-              <Image
-                className="w-full rounded-lg"
-                src={Customize}
-                alt="Customize your with your own design and preference."
-                width={1920}
-                height={960}
-                priority
-              />
-            </AspectRatio>
-          </CarouselItem>
-          <CarouselItem>
-            <AspectRatio ratio={2 / 1}>
-              <Image
-                className="w-full rounded-lg"
-                src={BuyInBulk}
-                alt="Customize your with your own design and preference."
-                width={1920}
-                height={960}
-                priority
-              />
-            </AspectRatio>
-          </CarouselItem>
+          {banners.map((banner) => (
+            banner.desktop_image && ( // Only render if desktop_image exists
+              <CarouselItem key={banner._id}>
+                <AspectRatio ratio={2 / 1}>
+                  <Image
+                    className="w-full rounded-lg"
+                    src={banner.desktop_image} // Use desktop_image URL
+                    alt={banner.name || 'Promotional banner'} // Use banner name or a generic alt
+                    priority // Keep priority for LCP if this is often the first large image
+                    width={1920} // Keep existing dimensions
+                    height={960}
+                    // Consider objectFit if aspect ratio of source images might vary
+                  />
+                </AspectRatio>
+              </CarouselItem>
+            )
+          ))}
         </CarouselContent>
       </Carousel>
     </div>
