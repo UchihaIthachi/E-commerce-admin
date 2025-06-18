@@ -1,0 +1,206 @@
+# deploy/.github/workflows/deploy-admin.yml
+name: Deploy Admin App to Vercel
+
+concurrency:
+  group: deploy-admin-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main # Production deployment
+    paths:
+      - 'Admin/**'
+      - 'deploy/.github/workflows/deploy-admin.yml'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'Admin/**'
+      - 'deploy/.github/workflows/deploy-admin.yml'
+  release:
+    types: [published] # Deploy to production on new GitHub release
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # For git operations like commit/push/tag
+          # For release events, checkout the specific tag:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Cache global npm packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-global-cache-v1 # Use a versioned key for global cache
+          restore-keys: |
+            ${{ runner.os }}-npm-global-cache-v1
+
+      - name: Cache Admin node_modules
+        uses: actions/cache@v3
+        with:
+          path: Admin/node_modules
+         # Adjust 'Admin/package-lock.json' if your project uses a different lock file (e.g., yarn.lock, pnpm-lock.yaml)
+          key: ${{ runner.os }}-admin-node-${{ hashFiles('Admin/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-admin-node-
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@33.5.0
+
+      - name: Update package.json Version (for Release)
+        if: github.event_name == 'release'
+        working-directory: Admin # Added
+        run: |
+          VERSION_FROM_TAG=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v//')
+          echo "Updating package.json to version $VERSION_FROM_TAG for release ${{ github.event.release.tag_name }}"
+          # 'cd Admin' removed
+          npm version "$VERSION_FROM_TAG" --no-git-tag-version --allow-same-version
+          # Changes are now in local package.json and package-lock.json (relative to Admin dir)
+        # working-directory: . (Removed if it was there, ensuring Admin is used)
+
+      - name: Determine Vercel Deployment Args and Context
+        id: vercel_context
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "VERCEL_ARGS=--cwd ./Admin" >> $GITHUB_OUTPUT
+            echo "IS_PULL_REQUEST=true" >> $GITHUB_OUTPUT
+            echo "IS_PRODUCTION_DEPLOY=false" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref_name }}" == "main" || "${{ github.event_name }}" == "release" ]]; then
+            echo "VERCEL_ARGS=--cwd ./Admin --prod" >> $GITHUB_OUTPUT
+            echo "IS_PULL_REQUEST=false" >> $GITHUB_OUTPUT
+            echo "IS_PRODUCTION_DEPLOY=true" >> $GITHUB_OUTPUT
+          else
+            echo "VERCEL_ARGS=--cwd ./Admin" >> $GITHUB_OUTPUT
+            echo "IS_PULL_REQUEST=false" >> $GITHUB_OUTPUT
+            echo "IS_PRODUCTION_DEPLOY=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to Vercel
+        id: vercel_deploy_step
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          # Vercel CLI deploys the current state of files in the working directory (--cwd ./Admin)
+          # This includes the locally bumped package.json if this is a release event.
+          DEPLOY_URL=$(vercel deploy ${{ steps.vercel_context.outputs.VERCEL_ARGS }} --token ${{ secrets.VERCEL_TOKEN }})
+          echo "DEPLOY_URL=$DEPLOY_URL" >> $GITHUB_OUTPUT
+          echo "Full Vercel Output:"
+          echo "$DEPLOY_URL"
+
+      - name: Commit and Push package.json Changes to main (for Release)
+        if: github.event_name == 'release' && steps.vercel_deploy_step.outcome == 'success'
+        working-directory: Admin # Added
+        run: |
+          VERSION_FROM_TAG=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v//')
+          echo "Committing package.json version $VERSION_FROM_TAG to main branch." # Path updated in log
+
+          # Git commands need to be run from the repo root for .git directory,
+          # but operations on files should consider the working-directory.
+          # For git add, commit, pathspec should be relative to working-directory if set.
+          # However, git config should be fine.
+          # Let's adjust git commands to be careful about pathing if working-directory affects them.
+          # `git add` paths will be relative to `Admin`.
+          # `git commit` does not need path adjustment.
+          # `git push` is repo-wide.
+
+          # Configure Git (can be done from anywhere, repo-level)
+          # To be safe, let's assume git commands are better run from repo root,
+          # and file manipulations use the working-directory.
+          # The previous structure had `cd Admin` then git commands.
+          # If `working-directory: Admin` is set, `git add package.json` is correct.
+          # `git commit` will commit changes staged from that working directory.
+          # `git push` is fine.
+
+          git config user.name "GitHub Action (Admin Release)"
+          git config user.email "action@github.com"
+
+          git add package.json package-lock.json # Adjusted paths
+          # Check if there are staged changes from npm version
+          if git diff --staged --quiet; then
+            echo "No changes to commit in Admin/package.json or Admin/package-lock.json. Version might have been the same."
+          else
+            git commit -m "Bump Admin version to $VERSION_FROM_TAG for release ${{ github.event.release.tag_name }} [skip ci-deploy]"
+            # Attempt to push the current commit (which is tag + version bump) to the main branch.
+            echo "Attempting to push updated Admin package.json to main branch..."
+            # This push will fail if it's not a fast-forward (e.g., if main has diverged
+            # from the commit the release tag was based on). This acts as a safety check.
+            if git push origin HEAD:refs/heads/main; then
+              echo "Pushed updated Admin package.json to main."
+            else
+              echo "--------------------------------------------------------------------------------"
+              echo "ERROR: Failed to push package.json changes to 'main'."
+              echo "This usually means the 'main' branch has new commits since the release tag"
+              echo "'${{ github.event.release.tag_name }}' was created, and this push would not be a fast-forward."
+              echo "The Vercel deployment for the release WAS successful with the correct version."
+              echo "ACTION REQUIRED: Please manually update 'Admin/package.json' on the 'main' branch to version $VERSION_FROM_TAG."
+              echo "You may need to pull latest 'main', merge changes, or cherry-pick the version bump."
+              echo "--------------------------------------------------------------------------------"
+              exit 1 # Fail the step to make it visible
+            fi
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GITHUB_TOKEN needs repo write permission
+
+      - name: Tag Successful Production Deployment
+        if: steps.vercel_context.outputs.IS_PRODUCTION_DEPLOY == 'true' && success()
+        run: |
+          TIMESTAMP=$(date -u +'%Y%m%d-%H%M%S')
+          VERSION_PART=""
+
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            # Strip 'v' prefix if it exists from the release tag for the version part
+            VERSION_PART=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v//')
+          else
+            # For pushes to main that are not part of a release event, use the timestamp
+            VERSION_PART=$TIMESTAMP
+          fi
+
+          GIT_TAG_NAME="vercel-admin-prod-$VERSION_PART"
+
+          echo "Creating Git tag: $GIT_TAG_NAME for commit ${{ github.sha }}"
+          git config user.name "GitHub Action (Admin Deploy)"
+          git config user.email "actions@github.com"
+          # Ensure the tag message is still informative
+          git tag -a $GIT_TAG_NAME -m "Production deployment of Admin app successful (Vercel). Trigger: ${{ github.event_name }}, Ref: ${{ github.ref_name }}, Version: $VERSION_PART"
+          git push origin $GIT_TAG_NAME
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment PR with Vercel Preview URL
+        if: steps.vercel_context.outputs.IS_PULL_REQUEST == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const deployUrl = `${{ steps.vercel_deploy_step.outputs.DEPLOY_URL }}`;
+            let previewUrl = "Could not determine preview URL. Please check workflow logs or Vercel dashboard.";
+            if (deployUrl.startsWith('https://')) {
+                previewUrl = deployUrl;
+            } else {
+                console.warn("Vercel deploy output was not a direct URL:", deployUrl);
+                const urlMatch = deployUrl.match(/https:\/\/[a-zA-Z0-9\-\.]+\.vercel\.app/);
+                if (urlMatch) {
+                    previewUrl = urlMatch[0];
+                }
+            }
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 Vercel Preview Deployment for Admin app is ready: ${previewUrl}`
+            });

@@ -1,0 +1,172 @@
+# deploy/.github/workflows/deploy-customer.yml
+name: Deploy Customer App to Vercel
+
+concurrency:
+  group: deploy-customer-${{ github.ref }} # Customer-specific group
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main # Production deployment
+    paths:
+      - 'Customer/**' # Customer-specific path
+      - 'deploy/.github/workflows/deploy-customer.yml'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'Customer/**' # Customer-specific path
+      - 'deploy/.github/workflows/deploy-customer.yml'
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Cache global npm packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-global-cache-v1 # Shared global cache key is fine
+          restore-keys: |
+            ${{ runner.os }}-npm-global-cache-v1
+
+      - name: Cache Customer node_modules
+        uses: actions/cache@v3
+        with:
+          path: Customer/node_modules
+         # Adjust 'Customer/package-lock.json' if your project uses a different lock file (e.g., yarn.lock, pnpm-lock.yaml)
+          key: ${{ runner.os }}-customer-node-${{ hashFiles('Customer/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-customer-node-
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@33.5.0 # Pinned version
+
+      - name: Update package.json Version (for Release)
+        if: github.event_name == 'release'
+        working-directory: Customer # Customer-specific
+        run: |
+          VERSION_FROM_TAG=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v//')
+          echo "Updating package.json to version $VERSION_FROM_TAG for release ${{ github.event.release.tag_name }}"
+          npm version "$VERSION_FROM_TAG" --no-git-tag-version --allow-same-version
+
+      - name: Determine Vercel Deployment Args and Context
+        id: vercel_context
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "VERCEL_ARGS=--cwd ./Customer" >> $GITHUB_OUTPUT # Customer-specific
+            echo "IS_PULL_REQUEST=true" >> $GITHUB_OUTPUT
+            echo "IS_PRODUCTION_DEPLOY=false" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref_name }}" == "main" || "${{ github.event_name }}" == "release" ]]; then
+            echo "VERCEL_ARGS=--cwd ./Customer --prod" >> $GITHUB_OUTPUT # Customer-specific
+            echo "IS_PULL_REQUEST=false" >> $GITHUB_OUTPUT
+            echo "IS_PRODUCTION_DEPLOY=true" >> $GITHUB_OUTPUT
+          else
+            echo "VERCEL_ARGS=--cwd ./Customer" >> $GITHUB_OUTPUT # Customer-specific
+            echo "IS_PULL_REQUEST=false" >> $GITHUB_OUTPUT
+            echo "IS_PRODUCTION_DEPLOY=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to Vercel
+        id: vercel_deploy_step
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_CUSTOMER }} # Customer-specific
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          DEPLOY_URL=$(vercel deploy ${{ steps.vercel_context.outputs.VERCEL_ARGS }} --token ${{ secrets.VERCEL_TOKEN }})
+          echo "DEPLOY_URL=$DEPLOY_URL" >> $GITHUB_OUTPUT
+          echo "Full Vercel Output:"
+          echo "$DEPLOY_URL"
+
+      - name: Commit and Push package.json Changes to main (for Release)
+        if: github.event_name == 'release' && steps.vercel_deploy_step.outcome == 'success'
+        working-directory: Customer # Customer-specific
+        run: |
+          VERSION_FROM_TAG=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v//')
+          echo "Committing package.json version $VERSION_FROM_TAG to main branch for Customer app."
+
+          git config user.name "GitHub Action (Customer Release)" # Customer-specific
+          git config user.email "action@github.com"
+
+          git add package.json package-lock.json # Relative to Customer dir
+          if git diff --staged --quiet; then
+            echo "No changes to commit in package.json or package-lock.json."
+          else
+            git commit -m "Bump Customer version to $VERSION_FROM_TAG for release ${{ github.event.release.tag_name }} [skip ci-deploy]"
+            echo "Attempting to push updated Customer package.json to main branch..."
+            if git push origin HEAD:refs/heads/main; then
+              echo "Pushed updated Customer package.json to main."
+            else
+              echo "--------------------------------------------------------------------------------"
+              echo "ERROR: Failed to push Customer package.json changes to 'main'."
+              echo "This usually means the 'main' branch has new commits since the release tag"
+              echo "'${{ github.event.release.tag_name }}' was created for the Customer app."
+              echo "The Vercel deployment for the Customer app release WAS successful with the correct version."
+              echo "ACTION REQUIRED: Please manually update 'Customer/package.json' on 'main' to version $VERSION_FROM_TAG."
+              echo "--------------------------------------------------------------------------------"
+              exit 1
+            fi
+          fi
+
+      - name: Tag Successful Production Deployment
+        if: steps.vercel_context.outputs.IS_PRODUCTION_DEPLOY == 'true' && success()
+        run: |
+          TIMESTAMP=$(date -u +'%Y%m%d-%H%M%S')
+          VERSION_PART=""
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION_PART=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v//')
+          else
+            VERSION_PART=$TIMESTAMP
+          fi
+
+          GIT_TAG_NAME="vercel-customer-prod-$VERSION_PART" # Customer-specific
+
+          echo "Creating Git tag: $GIT_TAG_NAME for commit ${{ github.sha }}"
+          git config user.name "GitHub Action (Customer Deploy)" # Customer-specific
+          git config user.email "actions@github.com"
+          git tag -a $GIT_TAG_NAME -m "Production deployment of Customer app successful (Vercel). Trigger: ${{ github.event_name }}, Ref: ${{ github.ref_name }}, Version: $VERSION_PART"
+          git push origin $GIT_TAG_NAME
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment PR with Vercel Preview URL
+        if: steps.vercel_context.outputs.IS_PULL_REQUEST == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const deployUrl = `${{ steps.vercel_deploy_step.outputs.DEPLOY_URL }}`;
+            let previewUrl = "Could not determine preview URL. Please check workflow logs or Vercel dashboard.";
+            if (deployUrl.startsWith('https://')) {
+                previewUrl = deployUrl;
+            } else {
+                console.warn("Vercel deploy output was not a direct URL:", deployUrl);
+                const urlMatch = deployUrl.match(/https:\/\/[a-zA-Z0-9\-\.]+\.vercel\.app/);
+                if (urlMatch) {
+                    previewUrl = urlMatch[0];
+                }
+            }
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 Vercel Preview Deployment for Customer app is ready: ${previewUrl}` // Customer-specific
+            });
