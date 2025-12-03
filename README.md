@@ -1,13 +1,17 @@
-Here’s an updated version of the architecture description based on your provided structure:
+🛒 **E-Commerce Admin Panel** 🛍️  
+🏢 **System Architecture (Current)** 🛠️
 
 ---
 
-🛒 **E-Commerce for** 🛍️  
-🏢 **System Architecture** (Current) 🛠️
+The **E-Commerce Admin Panel** is a headless administration interface built with **Next.js 14 (App Router)** and **TypeScript**. It is focused entirely on **back-office management** of catalog and transactional data, not on customer-facing storefront features.
 
----
+The admin app integrates three main backend pillars:
 
-The **E-Commerce** is a dynamic web application that facilitates both product purchasing and selling. Built using **Next.js** and integrated with cloud services such as **Sanity** (for content management), **Supabase** (for database management), and **Cloudflare** (for CDN), it ensures a responsive, secure, and scalable experience for users. The architecture is designed to handle various components, from front-end interactions to back-end data processing.
+- **Sanity (Headless CMS)** for catalog and content (products, categories, banners, grid items, etc.).
+- **PostgreSQL + Prisma** for transactional and account data (orders, carts, users, sessions, etc.).
+- **Cloudflare R2** for media storage, accessed through the **AWS S3 SDK**.
+
+Modern Next.js features (**Server Actions**, **Route Handlers**, and **tRPC**) are used to implement type-safe data flows, form mutations, and REST-style APIs. **Clerk** secures the admin surface via middleware-based authentication.
 
 ---
 
@@ -22,158 +26,403 @@ The **E-Commerce** is a dynamic web application that facilitates both product pu
 
 ---
 
+### 🧰 **Technology Stack** 🧰
+
+**Framework & Language**
+
+- **Next.js 14** (App Router, `app/` directory)
+- **React** (Server Components + Client Components)
+- **TypeScript**
+
+**UI & Styling**
+
+- **Tailwind CSS**
+- **Radix UI / shadcn/ui** (headless UI primitives and components)
+
+**Backend & Data**
+
+- **Prisma** ORM
+- **PostgreSQL** (transactional database)
+- **Sanity** (Headless CMS for catalog/content)
+
+**APIs & Integration**
+
+- **tRPC** for type-safe internal APIs (e.g., admin dashboard stats, attribute queries)
+- **Next.js Route Handlers** (`app/api/.../route.ts`) for REST-style endpoints
+- **Next.js Server Actions** for form-driven mutations (Create/Update/Delete)
+
+**Auth & Identity**
+
+- **Clerk** for authentication and authorization on the admin side
+
+**Storage & Delivery**
+
+- **Cloudflare R2** for media/asset storage via **AWS S3 SDK**
+- **Sanity CDN** for delivery of Sanity-hosted images and static content
+
+---
+
 ### 🔧 **System Design** 🔧
 
-The system architecture is composed of core components: front-end, back-end, identity management, and database, all interacting seamlessly to support user transactions and data handling. The integration of **Next.js** for both server-side rendering and static site generation provides the flexibility and speed required for a modern web platform.
+The Admin Panel is organized into clear, focused components that manage different parts of the e-commerce backend:
+
+- **Admin UI (Next.js 14)**
+- **Content Management (Sanity)**
+- **Transactional Database (PostgreSQL + Prisma)**
+- **Identity Service (Clerk)**
+- **Media Storage (Cloudflare R2, Sanity CDN)**
+
+It uses Next.js App Router with a mix of **Server Components**, **Client Components**, **Server Actions**, **tRPC**, and **Route Handlers** to handle reads and writes in a predictable, type-safe way.
+
+---
 
 #### **Visual System Overview (Diagram Descriptions)**
 
-For a visual understanding of the system, textual descriptions that can be used to generate diagrams (e.g., using Mermaid.js) are available. These provide insights into the overall system architecture and the conceptual database structure:
+For a visual understanding of the system, textual descriptions that can be rendered as diagrams (e.g. Mermaid.js) are available:
 
-*   **[System Diagram Descriptions](./docs/diagrams.md)**
+- **[System Diagram Descriptions](./docs/diagrams.md)**
 
-#### **Core Components**
+These describe:
 
-1. **Admin System** (Next.js)
-2. **Customer System** (Next.js, ShadCN)
-3. **Content Management** (Sanity)
-4. **Database** (Supabase, PostgreSQL)
-5. **Identity Service** (Clerk Auth for admin)
-6. **CDN** (Cloudflare)
+- High-level architecture of the Admin Panel
+- Conceptual data model across Sanity and PostgreSQL
+- Interactions between UI, content, transactional data, and storage
 
 ---
 
-- **Admin System:**  
-  The admin panel is used to manage products, categories, subcategories, inventory, orders, and customers. It is built using **Next.js** and **Sanity CMS** (headless) for managing dynamic content such as categories, banners, and product details.
-- **Customer System:**  
-  The customer-facing part of the platform, still under development, will be built using **Next.js 13** with AppRouter for smooth routing and navigation. Users can browse products, add items to the cart, manage their profiles, and checkout with ease.
+### 🧩 **Core Components**
+
+1. **Admin System** (Next.js 14 App Router)
+2. **Content Management** (Sanity CMS)
+3. **Transactional Database** (PostgreSQL + Prisma)
+4. **Identity Service** (Clerk)
+5. **Media Storage** (Cloudflare R2, Sanity CDN)
+
+> ⚠️ There is **no customer-facing frontend** in this repository. The scope is strictly the admin/back-office interface.
 
 ---
 
-#### **Content Management [Headless CMS (Sanity)]**
+#### **Admin System**
 
-The integration of **Sanity** ensures that product information, user-generated content, and any dynamic data can be updated and managed easily through a content management interface. The platform can pull content from **Sanity** to dynamically update the product listings, blogs, or promotional materials.
+The **Admin System** provides tools for managing:
 
-Sanity serves as the primary master datastore for the product catalog (cloths, variants, media) and related content (categories, banners, grid items). The application's backend API routes and command handlers orchestrate writing this data to Sanity.
-- **Dynamic Client (No CDN use):**  
-  Manages dynamic data like **category**, **subcategory**, **banner**, **color**, **grid-item**, and **size**. This data is retrieved from Sanity without utilizing the CDN.
+- Products and product variants
+- Categories and subcategories
+- Banners and grid items
+- Attributes (colors, sizes, etc.)
+- Orders and other transactional entities (where implemented)
 
-- **Static Client (Uses CDN):**  
-  Manages static content such as **cloth** product images, which benefit from the caching and fast delivery through **Sanity's CDN**.
+Key characteristics:
 
-The system also leverages Sanity's GraphQL API for specific read operations (e.g., fetching category data) and it's the recommended approach for standardizing data retrieval from Sanity in the future.
----
-
-- **Backend (Database, Authentication, Session Management):**  
-  Data is managed using **Prisma ORM** and **PostgreSQL** (via **Supabase**). It handles models like **Delivery**, **Pickup**, **Order**, **Account**, **Session**, **VerificationToken**, **User**, **Address**, **Cart**, and **Cart-item**. Supabase provides a secure and scalable environment for managing relational data.
-
----
-
-#### **Identity Service**
-
-- **Clerk Auth** will manage user authentication and authorization for the admin side of the platform. It will secure access to the platform's internal management tools, ensuring only authorized users can update products, manage orders, or perform administrative tasks.
+- Built with **Next.js 14 App Router** and **TypeScript**
+- Uses **Server Actions** for typical admin mutations:
+  - Create / update / delete categories, subcategories, banners, grid items, colors, sizes, etc.
+- Uses **tRPC** for type-safe admin queries, such as:
+  - Dashboard statistics
+  - Summary metrics and attribute lists
+- Uses **Route Handlers** for REST-style APIs when an HTTP endpoint contract is preferred
 
 ---
 
-#### **CDN**
+### 🗂 **Content Management – Sanity (Headless CMS)**
 
-- **Cloudflare** is used for content delivery, ensuring that static assets such as images, CSS, and JavaScript files load quickly, even in regions far from the server’s origin.
+**Sanity** is the **source of truth** for catalog/content data:
+
+- Products / “cloths” and variants
+- Categories and subcategories
+- Banners and grid items
+- Content metadata and image references
+
+The Admin Panel reads and writes this data through Sanity’s APIs:
+
+- **Dynamic Client (non-CDN) access**  
+  Used for managing dynamic entities where up-to-date content is required:
+  - **category**
+  - **subcategory**
+  - **banner**
+  - **color**
+  - **grid-item**
+  - **size**
 
 - **Sanity CDN**  
-  **Sanity's CDN** is used for optimizing the delivery of static content such as **cloth** images. It caches and serves content from multiple edge locations to ensure fast loading times and improve overall user experience.
+  Used for delivering images and static assets (e.g., product images) with low latency.
+
+When convenient, Sanity’s **GraphQL API** is used for structured read operations and standardized queries. Other reads use the Sanity client directly; over time, more reads can be unified under one approach.
 
 ---
 
-### **Architecture Patterns**
+### 🗄 **Backend – PostgreSQL & Prisma**
 
-The project employs several key architecture patterns to ensure scalability, maintainability, and efficiency:
+Transactional data is stored in **PostgreSQL** and accessed via **Prisma**. Typical models include:
 
-- **CQRS (Command Query Responsibility Segregation):**  
-  The application uses **CQRS** to separate the command (write) and query (read) operations, enabling better scalability and performance. This pattern helps to optimize the system for high-load environments by handling reads and writes separately.
+- `Order`
+- `Delivery`
+- `Pickup`
+- `User`
+- `Account`
+- `Session`
+- `VerificationToken`
+- `Address`
+- `Cart`
+- `CartItem` (or equivalent)
 
-- **DTO (Data Transfer Object):**  
-  Data is transferred between components using **DTOs**, which are lightweight objects containing only the necessary data for communication between components. This pattern minimizes the data transferred, improving performance and reducing overhead.
+Prisma provides:
 
-- **Repository Pattern:**  
-  The back-end services are designed using the **Repository pattern**, which abstracts the data access logic from the business logic. This separation allows for easier unit testing, better maintainability, and more flexibility when changing the data storage or retrieval methods.
+- Type-safe database access
+- Centralized schema definition
+- Migrations and consistent query patterns
 
-- **Layered Architecture:**  
-  The system follows a **Layered Architecture** pattern, separating the application into distinct layers for better manageability and scalability:
+This layer handles **operational data** (orders, carts, users, etc.) and complements Sanity, which focuses on catalog/content.
 
-  - **Frontend Layer:**  
-    This layer is responsible for the user interface and interaction. Built using **Next.js** and integrated with **ShadCN**, it handles user input, rendering, and communicating with the back-end.
-  - **Business Logic Layer:**  
-    The **Business Logic Layer** handles the core functionality and operations of the platform. It includes services that process orders, manage inventory, and handle authentication and session management. This layer uses the **Repository pattern** for data access and ensures the integrity of business rules.
-  - **Data Access Layer:**  
-    The **Data Access Layer** abstracts interactions with the database, utilizing **Prisma ORM** for seamless communication with the **PostgreSQL** database via **Supabase**. This layer is responsible for querying, inserting, and managing data records like **Delivery**, **Pickup**, **Orders**, **Cart**, and **User**.
-  - **Database Layer:**  
-    The **Database Layer** contains the actual data storage, in this case, using **PostgreSQL** (via **Supabase**). It manages persistent storage for user data, orders, sessions, and more.
+---
 
-- **Headless CMS Pattern:**  
-  The system integrates **Sanity CMS** as a **Headless CMS**, enabling content management and delivery as structured data through APIs. This pattern decouples content management from the presentation layer, offering flexibility and scalability.
+### 🔐 **Identity Service – Clerk**
 
-#### Modern API Patterns (Admin Panel)
+**Clerk** manages authentication and authorization for the Admin Panel:
 
-In addition to the foundational patterns, the Admin Panel is progressively adopting modern API strategies to enhance developer experience and type safety:
-*   **tRPC:** Being introduced for internal client-server communication, providing end-to-end type-safe APIs for features like Banner, Color, and Size management, as well as for dashboard data retrieval.
-*   **Next.js Server Actions:** Used for handling form mutations directly from server components or client components, as seen in Category management. This simplifies data submission flows.
+- Middleware in the App Router is used to protect admin routes.
+- Only authenticated users can access admin pages and APIs.
+- Clerk sessions are surfaced where needed in server logic for secure mutations and reads.
 
-For more detailed explanations of these API strategies, including GraphQL usage with Sanity and the tRPC implementation pattern, please refer to the "[API Strategies and Design Patterns](./enhancement.md#3-api-strategies-and-design-patterns)" section in the enhancement document.
+This ensures that product, order, and content management is restricted to authorized users.
+
+---
+
+### 🌐 **Media Storage & Delivery**
+
+#### **Cloudflare R2 (via AWS S3 SDK)**
+
+- Used to store binary assets such as product images and other media.
+- Accessed via the **AWS S3 SDK**, giving a familiar S3-style programming model.
+- Decouples file storage from the application runtime.
+
+#### **Sanity CDN**
+
+- Sanity’s image/CDN layer is used to deliver images referenced in Sanity documents.
+- Provides:
+  - Edge caching
+  - Optimized image URLs and transformations (where configured)
+
+---
+
+### 🧱 **Architecture Patterns**
+
+The Admin Panel follows well-known patterns to keep the codebase maintainable and scalable.
+
+#### **CQRS (Command Query Responsibility Segregation)**
+
+- **Commands** (write operations) are implemented via:
+  - Server Actions
+  - Command handlers that talk to repositories (Sanity, PostgreSQL, Cloudflare R2)
+- **Queries** (read operations) are implemented via:
+  - tRPC procedures
+  - Sanity clients / GraphQL
+  - Prisma queries
+
+Separating reads and writes makes it easier to evolve each side independently.
+
+#### **DTO (Data Transfer Object)**
+
+- Lightweight DTOs are used when shaping data between layers:
+  - Sanity/Prisma responses → Admin UI
+  - Command inputs → repositories
+- DTOs help avoid leaking internal data models directly into the UI.
+
+#### **Repository Pattern**
+
+- Data access is encapsulated behind repository interfaces:
+  - Sanity repositories
+  - Prisma/PostgreSQL repositories
+  - Asset storage repositories (Cloudflare R2)
+- This allows:
+  - Easier unit testing
+  - Safe refactoring of persistence details
+  - A clear boundary between application logic and data access
+
+#### **Layered Architecture**
+
+The Admin Panel uses a layered architecture:
+
+- **Frontend Layer**
+  - Next.js 14 App Router, React, Tailwind, shadcn/ui
+  - Renders pages, tables, and forms
+  - Uses Client Components where interactivity is required
+
+- **Application / Business Logic Layer**
+  - Command and Query handlers
+  - Implements operations such as:
+    - Category / subcategory / banner / grid item management
+    - Attribute management (color, size)
+    - Order workflows (when present)
+  - Coordinates between UI and repositories
+
+- **Data Access Layer**
+  - Concrete repositories for:
+    - Sanity (content)
+    - Prisma/PostgreSQL (transactions)
+    - Cloudflare R2 (assets)
+
+- **Data Storage Layer**
+  - Sanity datasets for content
+  - PostgreSQL tables for transactional data
+  - R2 buckets for media files
+
+#### **Headless CMS Pattern**
+
+- **Sanity** is used as a **Headless CMS**:
+  - Content is created and managed independently of the frontend.
+  - The Admin Panel consumes this content over APIs.
+- This pattern supports:
+  - Multi-channel usage (e.g., if a future storefront or mobile app consumes the same catalog)
+  - Independent evolution of content and admin UI
+
+---
+
+### 🔌 **Modern API Patterns (Admin Panel)**
+
+The Admin Panel uses several Next.js-native patterns:
+
+- **tRPC**
+  - Provides type-safe APIs for internal admin use cases.
+  - Particularly useful for dashboard data and structured admin queries.
+
+- **Next.js Server Actions**
+  - Used for form submissions and mutations (e.g., creating/updating/deleting categories, subcategories, banners, grid items, colors, sizes).
+  - Keep mutation logic on the server without extra client-side API boilerplate.
+
+- **Next.js Route Handlers**
+  - Implement REST-style APIs under `app/api/...`.
+  - Used where an HTTP endpoint contract is preferred or external integration is expected.
+
+For deeper discussion of these patterns and examples, see:
+
+- **[API Strategies and Design Patterns](./enhancement.md#3-api-strategies-and-design-patterns)**
+
 ---
 
 ### 🔨 **Development Methodology** 🔨
 
-not yet
+This section will be expanded over time.  
+At present, development focuses on:
+
+- Incremental improvements to the Admin Panel (new entities, flows, cleanups)
+- Refactoring toward consistent usage of:
+  - tRPC for reads
+  - Server Actions for writes
+  - Repository and CQRS patterns across all features
+- Tracking improvement ideas and architecture notes in `enhancement.md`
 
 ---
 
 ### 📈 **System Attributes** 📈
 
-- **Reliability**:
+#### **Reliability**
 
-  - **Next.js** is utilized for **server-side rendering**, ensuring fast initial load times and smooth interactions for the user.
-  - **Cloudflare** plays a crucial role in optimizing **reliability** by enhancing caching and overall performance.
+- Uses **Next.js App Router** and Server Actions to reduce client-side failure surface for critical admin operations.
+- Sanity, PostgreSQL, and R2 are independent services, enabling clear responsibility boundaries.
 
-- **Availability**:
+#### **Availability**
 
-  - The use of **Cloudflare CDN** and **Sanity** as a **content management system** ensures that the platform is always available, minimizing downtime and providing a continuous shopping experience.
+- Headless integration with **Sanity** and **PostgreSQL** allows each service to be scaled and operated independently.
+- Media delivery is offloaded to **Sanity CDN** and **Cloudflare R2**, keeping the admin runtime focused on logic, not file serving.
 
-- **Security**:
-  - **Clerk Auth** secures admin access through **role-based authentication**, ensuring that only authorized users can manage the platform's internal systems.
+#### **Security**
+
+- **Clerk** provides authentication and authorization on the admin side.
+- Middleware-protected routes ensure that only authenticated users can access management screens and APIs.
+
+---
 
 ### 🔍 **System Review and Future Improvements** 🔍
 
-This section outlines potential enhancements based on a recent code analysis, focusing on leveraging modern technologies and optimizing existing patterns. For a more detailed breakdown of these suggestions, please refer to `enhancement.md`.
+This section summarizes possible improvements for the Admin Panel. For details, see `enhancement.md`.
 
 #### **1. Modernizing API and Data Handling**
 
-*   **Standardize Sanity Data Reads with GraphQL:**
-    *   Currently, Sanity data is read using both direct client GROQ queries (for products) and GraphQL (for categories). Consider migrating all Sanity read operations to use its GraphQL API for a consistent data-fetching approach and potentially more precise data requests.
-*   **Adopt tRPC for Internal Type-Safe APIs:**
-    *   The current internal REST-like API routes (client-to-Next.js backend) can be enhanced by adopting tRPC. This would provide end-to-end type safety between the client and server, improving developer experience and reducing runtime errors, especially for interactions with the Supabase/PostgreSQL database (orders, user profiles, etc.).
-*   **Leverage Next.js Server Actions for Mutations:**
-    *   Simplify data mutation operations (forms, delete actions in the admin panel) by using Next.js Server Actions. This can reduce boilerplate API route handlers and streamline the data flow from client components to server-side command handlers.
+- **Standardize Sanity Reads**  
+  Some reads use Sanity client directly; others may use GraphQL. Over time, converge on a consistent pattern (all client or all GraphQL) to simplify maintenance.
 
-#### **2. Enhancing SEO for Customer-Facing System**
+- **Extend tRPC Coverage**  
+  tRPC is already used for selected features (e.g., dashboard stats). It can be extended to more admin queries to leverage end-to-end type safety.
 
-*   **Dynamic Page Metadata:**
-    *   Implement dynamic metadata generation (titles, descriptions, Open Graph tags) for all customer-facing pages (products, categories) using Next.js's `generateMetadata` function. This function should fetch SEO data stored in Sanity for each page.
-*   **Optimal Rendering Strategies (SSR/SSG/ISR):**
-    *   Utilize Server-Side Rendering (SSR), Static Site Generation (SSG), or Incremental Static Regeneration (ISR) for customer-facing pages to ensure they are fully crawlable and SEO-friendly. The choice depends on content update frequency.
-*   **Advanced SEO with `next-seo`:**
-    *   For more complex SEO requirements like JSON-LD structured data, detailed Open Graph/Twitter cards, or easier management of numerous SEO tags, consider integrating the `next-seo` library.
-*   **Sitemaps and `robots.txt`:**
-    *   Implement dynamic sitemap generation (`sitemap.ts`) to list all indexable product and category pages. Ensure a well-configured `robots.txt` guides search engine crawlers effectively.
+- **Broaden Server Actions Usage**  
+  Continue moving mutation flows (especially CRUD on less-mature modules) onto Server Actions to reduce API boilerplate and keep logic server-side.
 
-#### **3. Existing Planned Improvements**
+#### **2. Existing Planned Improvements (Admin-Focused)**
 
-*   **Improved Customer Dashboard**:
-    *   A more comprehensive interface for customers is planned, with features such as order tracking, wishlists, and personalized recommendations to enhance user engagement.
-*   **Optimized User Experience**:
-    *   The product search feature is expected to be enhanced with AI/ML capabilities to offer tailored recommendations, improving the overall shopping experience.
-*   **Enhanced Analytics**:
-    *   A future improvement would include an **analytics dashboard** for monitoring customer behavior, product performance, and sales trends, providing valuable insights for business decisions.
-*   **Mobile App**:
-    *   Expanding the platform to mobile apps for **iOS and Android** will help increase customer engagement and expand the user base.
+- **Richer Admin Dashboards**  
+  More detailed metrics and operational views (orders, conversions, catalog health).
+
+- **Bulk Operations**  
+  Support for bulk edits (e.g., mass updates of categories, attributes, banners).
+
+- **Stronger Validation & Error Handling**  
+  Use schema validators (e.g., Zod) consistently across all forms and handlers to improve robustness.
+
+- **Test Coverage**  
+  Add unit and integration tests around repositories, command/query handlers, and critical Route Handlers/Server Actions.
+
+---
+
+### 🚀 **Deployment to Vercel (GitHub Actions)** 🚀
+
+The deployment process is automated using GitHub Actions. Pushing code to the `deploy` branch triggers a workflow that builds and deploys the application to Vercel.
+
+#### **GitHub Action Workflow**
+
+- **File**: `.github/workflows/deploy-vercel.yml`
+- **Trigger**: Push to `deploy` branch
+- **Steps**:
+  1. **Install**: Installs dependencies (with legacy peer deps handling).
+  2. **Build**: Runs `npm run build` to generate the production build.
+  3. **Deploy**: Uses the Vercel CLI to deploy to production.
+
+#### **Required Environment Variables**
+
+These environment variables must be configured in **Vercel Project → Settings → Environment Variables**. Do **not** commit these values to the repository.
+
+**Database (PostgreSQL via Prisma)**
+- `DATABASE_URL`: Connection string for the Prisma database.
+- `DIRECT_URL`: Direct connection string for database migrations/access.
+
+**Sanity (Headless CMS)**
+- `NEXT_PUBLIC_SANITY_DATASET`: The dataset name (e.g., `production`).
+- `NEXT_PUBLIC_SANITY_PROJECT_ID`: The unique project ID for Sanity.
+- `SANITY_TOKEN`: API token for authenticated requests to Sanity.
+
+**Cloudflare R2 (Storage)**
+- `CLOUDFLARE_ACCESS_KEY_ID`: Access key for R2 authentication.
+- `CLOUDFLARE_SECRET_ACCESS_KEY`: Secret key for R2 authentication.
+- `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account identifier.
+- `CLOUDFLARE_BUCKET_NAME`: Name of the storage bucket.
+- `CLOUDFLARE_PUBLIC_DOMAIN`: Public domain URL for accessing stored assets.
+
+**Clerk (Authentication)**
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Public key for Clerk client-side usage.
+- `CLERK_SECRET_KEY`: Secret key for Clerk server-side usage.
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL`: URL path for sign-in page.
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL`: URL path for sign-up page.
+- `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL`: Redirect URL after successful sign-in.
+- `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL`: Redirect URL after successful sign-up.
+
+#### **Setup Steps**
+
+1. **Connect Vercel Project**: Link your GitHub repository to a new Vercel project.
+2. **Configure Secrets in GitHub**:
+   Add the following secrets in **GitHub Repo Settings → Secrets and variables → Actions**:
+   - `VERCEL_TOKEN`: Your Vercel account token.
+   - `VERCEL_ORG_ID`: The Vercel Organization ID (found in `.vercel/project.json` or Vercel settings).
+   - `VERCEL_PROJECT_ID`: The Vercel Project ID.
+3. **Configure Environment Variables in Vercel**: Add all the variables listed above in the Vercel dashboard.
+4. **Deploy**: Push changes to the `deploy` branch to trigger the pipeline.
+
+   ```bash
+   git checkout -b deploy
+   git push origin deploy
+   ```
+
+> **Note on Environments**:
+> - **Local Development**: Use a `.env` (or `.env.local`) file with the same variable names and run `npm run dev`.
+> - **Production**: Variables are managed via Vercel, and deployment is handled via GitHub Actions.
 
 ---
