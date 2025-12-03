@@ -13,5 +13,5 @@ export default async function updateSizeCommandHandler(
   command: UpdateSizeCommand
 ) {
   const { _id } = command;  
-  await updateSize({ ...command });
+  return await updateSize({ ...command });
 }

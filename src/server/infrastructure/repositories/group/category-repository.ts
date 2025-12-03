@@ -46,7 +46,7 @@ export const getCategories = async () => {
   `;
 
   try {
-    const response = await graphqlClient.request(query);
+    const response: any = await graphqlClient.request(query);
 
     if (!response.allCategory || response.allCategory.length === 0) {
       console.warn("No categories found.");
@@ -87,7 +87,7 @@ export const getCategory = async (_id: string) => {
 
   try {
     const variables = { id: _id };
-    const response = await graphqlClient.request(query, variables);
+    const response: any = await graphqlClient.request(query, variables);
 
     if (!response.Category) {
       throw new Error(`Category with ID "${_id}" not found.`);

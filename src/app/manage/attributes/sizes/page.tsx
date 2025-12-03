@@ -1,25 +1,28 @@
 "use client";
 
-import { getSizes } from "@/lib/api/size";
 import { columns } from "./components/columns";
 import { DataTable } from "./components/data-table";
-import { useQuery } from "@tanstack/react-query";
+import { trpc } from "@/lib/providers"; // Import trpc instance
+import { Loader2 } from "lucide-react"; // For loading state
 
 function SizesPage() {
-  const { data: sizes, isLoading } = useQuery({
-    queryKey: ["SIZES"],
-    queryFn: getSizes,
-  });
+  const { data: sizes, isLoading, error } = trpc.adminSize.getAll.useQuery();
 
   return (
     <div>
-      <h2 className="p-2">Sizes</h2>
+      <h2 className="p-2 text-lg font-semibold">Sizes</h2>
       <div className="p-4 mx-auto">
-        {isLoading ? (
-          "Loading..."
-        ) : (
-          <DataTable columns={columns} data={sizes!} />
+        {isLoading && (
+          <div className="flex items-center">
+            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+            <span>Loading sizes...</span>
+          </div>
         )}
+        {error && <p className="text-red-500">Error fetching sizes: {error.message}</p>}
+        {!isLoading && !error && sizes && (
+          <DataTable columns={columns} data={sizes} />
+        )}
+        {!isLoading && !error && !sizes && <p>No sizes found.</p>}
       </div>
     </div>
   );

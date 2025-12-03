@@ -17,7 +17,7 @@ export const getGridItems = async () => {
             }
         }
     `;
-    const response = await graphqlClient.request(query);
+    const response: any = await graphqlClient.request(query);
     const data = GetGridItemDTO.array().parse(response.allGridItem);
     return data;
 };
@@ -35,7 +35,7 @@ export const getGridItem = async (_id: string) => {
         }
     `;
     const variables = { id: _id };
-    const response = await graphqlClient.request(query, variables);
+    const response: any = await graphqlClient.request(query, variables);
     const data = GetGridItemDTO.parse(response.GridItem);
     return data;
 };

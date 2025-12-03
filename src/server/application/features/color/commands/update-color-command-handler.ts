@@ -14,5 +14,5 @@ export default async function updateCategoryCommandHandler(
   command: UpdateColorCommand
 ) {
   const { _id } = command;
-  await updateColor({ ...command });
+  return await updateColor({ ...command });
 }

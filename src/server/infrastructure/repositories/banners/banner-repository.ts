@@ -18,7 +18,7 @@ export const getBanners = async () => {
     `;
   
     try {
-      const response = await graphqlClient.request(query);
+      const response: any = await graphqlClient.request(query);
   
       if (!response.allBanner || response.allBanner.length === 0) {
         console.warn("No banners found.");
@@ -48,7 +48,7 @@ export const getBanners = async () => {
   
     try {
       const variables = { id: _id };
-      const response = await graphqlClient.request(query, variables);
+      const response: any = await graphqlClient.request(query, variables);
   
       if (!response.Banner) {
         throw new Error(`Banner with ID "${_id}" not found.`);

@@ -21,6 +21,13 @@ function Navigation() {
                     <NavigationMenuList asChild>
                         <ul className="flex flex-col items-stretch py-4 pl-4 gap-y-2 space-x-0">
                             <NavigationMenuItem>
+                                <Link href="/manage/dashboard" legacyBehavior passHref>
+                                    <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                                        Dashboard
+                                    </NavigationMenuLink>
+                                </Link>
+                            </NavigationMenuItem>
+                            <NavigationMenuItem>
                                 <Link href="/manage/products" legacyBehavior passHref>
                                     <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                                         Products

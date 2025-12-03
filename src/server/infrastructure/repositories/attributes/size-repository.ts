@@ -24,7 +24,7 @@ type UpdateSizeParams = {
     `;
   
     try {
-      const response = await graphqlClient.request(query);
+      const response: any = await graphqlClient.request(query);
   
       if (!response.allSize || response.allSize.length === 0) {
         console.warn("No sizes found.");
@@ -52,7 +52,7 @@ type UpdateSizeParams = {
   
     try {
       const variables = { id: _id };
-      const response = await graphqlClient.request(query, variables);
+      const response: any = await graphqlClient.request(query, variables);
   
       if (!response.Size) {
         throw new Error(`Size with ID "${_id}" not found.`);
@@ -78,6 +78,7 @@ export const createSize = async (params: CreateSizeParams) => {
       name,
     };
     await dynamicClient.create(doc);
+    return doc;
   };
 
 export const findSizeByName = async (name: string) => {
@@ -89,6 +90,7 @@ export const findSizeByName = async (name: string) => {
 export const updateSize = async (params: UpdateSizeParams) => {
     const { _id, name } = params;
     await dynamicClient.patch(params._id).set({ name }).commit();
+    return { _id, name };
   };
 
 export const deleteSize = async (_id: string) => {

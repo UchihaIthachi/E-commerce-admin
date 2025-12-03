@@ -49,7 +49,7 @@ export const getSubCategories = async () => {
   `;
 
   try {
-    const response = await graphqlClient.request(query);
+    const response: any = await graphqlClient.request(query);
 
     if (!response.allSubcategory || response.allSubcategory.length === 0) {
       console.warn("No subcategories found.");
@@ -94,7 +94,7 @@ export const getSubCategory = async (_id: string) => {
 
   try {
     const variables = { id: _id };
-    const response = await graphqlClient.request(query, variables);
+    const response: any = await graphqlClient.request(query, variables);
 
     if (!response.Subcategory) {
       throw new Error(`Subcategory with ID "${_id}" not found`);

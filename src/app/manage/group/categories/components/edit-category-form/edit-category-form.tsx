@@ -3,23 +3,32 @@
 import TextInput from "@/app/manage/components/form/text-input";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
-import { addCategory, updateCategory } from "@/lib/api/category";
+// Remove: import { updateCategory } from "@/lib/api/category";
+// Remove: import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { GetCategoryDTO } from "@/server/application/common/dtos/category";
+import { GetCategoryDTO } from "@/server/application/common/dtos/category"; // Keep this for prop type
 import NumberInput from "../../../../components/form/number-input";
 import ImagesInput from "@/app/manage/components/form/images-input";
 
-const EditCategoryFormSchema = z.object({
-  name: z.string().min(2).max(50),
+// Import Server Action and hooks from react-dom
+import { updateCategoryAction } from "../../actions"; // Adjust path if necessary
+// @ts-ignore
+import { useFormState, useFormStatus } from "react-dom";
+import { useEffect } from "react";
+
+// Client-side Zod schema for form validation.
+// Align with EditCategoryDTO and how FormData will be structured.
+// Similar to AddCategoryForm, OG image fields are commented out for now.
+const EditCategoryClientSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters.").max(50),
   slug: z
     .string()
-    .min(2)
+    .min(2, "Slug must be at least 2 characters.")
     .max(50)
     .refine((v) => v === v.toLowerCase(), {
       message: "Slugs can't have capital letters",
@@ -27,71 +36,88 @@ const EditCategoryFormSchema = z.object({
     .refine((v) => !v.includes(" "), {
       message: "Slugs can't have spaces",
     }),
-  seo: z.object({
-    title: z.string().max(60).optional(),
-    description: z.string().max(160).optional(),
-    og_title: z.string().optional(),
-    og_description: z.string().optional(),
-    og_image: z.object({
-      image: z.string().array().optional(),
-      width: z.number().optional(),
-      height: z.number().optional(),
-      alt: z.string().optional(),
-    })
-  }),
+  "seo.title": z.string().max(60).optional(),
+  "seo.description": z.string().max(160).optional(),
+  // "seo.og_title": z.string().optional(),
+  // "seo.og_description": z.string().optional(),
+  // "seo.og_image.image": z.string().array().optional(),
+  // "seo.og_image.width": z.number().optional(),
+  // "seo.og_image.height": z.number().optional(),
+  // "seo.og_image.alt": z.string().optional(),
 });
 
-function EditCategoryForm({
-  category,
-}: {
-  category: z.infer<typeof GetCategoryDTO> | undefined;
-}) {
-  if (!category) {
-    return <div>Loading category data...</div>;
-  }
-  console.log("Catagory : ",category);
+// Type for the props, ensuring category is always defined when form is rendered
+type EditCategoryFormProps = {
+  category: z.infer<typeof GetCategoryDTO>; // Category should be loaded by parent page
+};
 
-  const EditCategoryForm = useForm<z.infer<typeof EditCategoryFormSchema>>({
-    resolver: zodResolver(EditCategoryFormSchema),
+// SubmitButton component
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        "Save Changes"
+      )}
+    </Button>
+  );
+}
+
+const initialState = {
+  message: null,
+  errors: undefined,
+};
+
+function EditCategoryForm({ category }: EditCategoryFormProps) {
+  // category prop is now guaranteed to be defined by the parent page's loading logic
+
+  const form = useForm<z.infer<typeof EditCategoryClientSchema>>({
+    resolver: zodResolver(EditCategoryClientSchema),
     defaultValues: {
-      name: category.name,
-      slug: category.slug,
-      seo: category.seo,
+      name: category.name || "",
+      slug: category.slug || "",
+      "seo.title": category.seo?.title || "",
+      "seo.description": category.seo?.description || "",
+      // seo: category.seo || { og_image: { image: [] } }, // Defaulting complex objects
     },
   });
 
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { mutate, isLoading } = useMutation({
-    mutationFn: updateCategory,
-    onSuccess: () => {
-      queryClient.invalidateQueries(["CATEGORY"])
-      toast({title:"Success", variant: "default"})
-    },
-    onError: (error) =>
-      toast({
-        title: "Error",
-        variant: "destructive",
-        description: "Cannot update as category is already referenced",
-      }),
-  });
+  const [state, formAction] = useFormState(updateCategoryAction, initialState);
 
-  const onSubmit = async (values: z.infer<typeof EditCategoryFormSchema>) => {
-    mutate({ _id: category._id, ...values });
-  };
+  useEffect(() => {
+    if (state?.message) {
+      if (state.errors) {
+        toast({
+          title: "Error",
+          variant: "destructive",
+          description: state.message,
+        });
+      } else {
+        toast({ title: "Success", variant: "default", description: state.message });
+        // Optionally redirect or indicate success. Revalidation is handled by the server action.
+        // router.push("/manage/group/categories");
+      }
+    }
+  }, [state, toast, router]);
 
   return (
     <div>
       <Button variant="link" className="px-0" onClick={() => router.back()}>
         Back
       </Button>
-      <Form {...EditCategoryForm}>
+      <Form {...form}>
         <form
-          onSubmit={EditCategoryForm.handleSubmit(onSubmit)}
+          action={formAction}
           className="w-1/2 py-4"
         >
+          {/* Hidden input for the category ID */}
+          <input type="hidden" name="_id" value={category._id} />
+
           <h4>Basic Information</h4>
           <div className="mt-4 flex flex-col gap-y-4">
             <TextInput name="name" placeholder="Women" label="Name" />
@@ -106,37 +132,14 @@ function EditCategoryForm({
                 placeholder=""
                 label="Meta Description"
               />
-              <TextInput name="seo.og_title" placeholder="" label="OG Title" />
-              <TextInput
-                name="seo.og_description"
-                placeholder=""
-                label="OG Description"
-              />
-              <div>
-                <h6>OG Image</h6>
-                <div className={"grid grid-cols-1 gap-y-4"}>
-                  <ImagesInput
-                    constrain={1}
-                    name="seo.og_image.image"
-                    label="Image"
-                  />
-                  <div className="grid grid-cols-2 gap-x-4 ">
-                    <NumberInput name="seo.og_image.width" label="Width" />
-                    <NumberInput name="seo.og_image.height" label="height" />
-                  </div>
-                  <TextInput name={"seo.og_image.alt"} label={"Alternative Text"} />
-                </div>
-              </div>
+              {/* OG fields commented out for consistency with Add form and server action DTO */}
             </div>
           </div>
+          {state?.errors?._form && (
+            <p className="text-sm font-medium text-destructive">{state.errors._form.join(', ')}</p>
+          )}
           <div className="my-4">
-            <Button type="submit">
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Save"
-              )}
-            </Button>
+            <SubmitButton />
           </div>
         </form>
       </Form>
