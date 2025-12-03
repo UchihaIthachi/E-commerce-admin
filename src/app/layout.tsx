@@ -1,32 +1,30 @@
 import Providers from "@/lib/providers";
 import "./globals.css";
-import type {Metadata} from "next";
-import {Inter} from "next/font/google";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import Navigation from "@/app/manage/components/navigation";
-import {Toaster} from "@/components/ui/toaster";
-import {ClerkProvider} from '@clerk/nextjs'
+import { Toaster } from "@/components/ui/toaster";
+import { ClerkProvider } from "@clerk/nextjs";
 
-const inter = Inter({subsets: ["latin"]});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-    title: "Kandy Selection Admin",
-    description: "Kandy Selection Admin",
+  title: "E-commerce Admin",
+  description: "E-commerce Admin",
 };
 
 export default function RootLayout({
-                                       children,
-                                   }: {
-    children: React.ReactNode;
+  children,
+}: {
+  children: React.ReactNode;
 }) {
-    return (
-        <ClerkProvider>
-            <html lang="en" suppressHydrationWarning>
-            <body className={`${inter.className}`}>
-            <Providers>
-                {children}
-            </Providers>
-            </body>
-            </html>
-        </ClerkProvider>
-    );
+  return (
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning>
+        <body className={`${inter.className}`}>
+          <Providers>{children}</Providers>
+        </body>
+      </html>
+    </ClerkProvider>
+  );
 }

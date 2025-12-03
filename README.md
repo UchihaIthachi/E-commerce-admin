@@ -1,68 +1,70 @@
-🛒 **E-Commerce Admin Panel** 🛍️  
-🏢 **System Architecture (Current)** 🛠️
+# 🛒 E-Commerce Admin Panel 🛍️
 
----
+[![Deploy to Vercel](https://github.com/kandy-selection/admin-v2/actions/workflows/deploy-vercel.yml/badge.svg)](https://github.com/kandy-selection/admin-v2/actions/workflows/deploy-vercel.yml)
+![Next.js 14](https://img.shields.io/badge/Next.js%2014-App%20Router-black?style=flat-square&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?style=flat-square&logo=typescript)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.0+-38B2AC?style=flat-square&logo=tailwind-css)
+![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat-square&logo=prisma)
+
+## 🏢 System Architecture (Current) 🛠️
 
 The **E-Commerce Admin Panel** is a headless administration interface built with **Next.js 14 (App Router)** and **TypeScript**. It is focused entirely on **back-office management** of catalog and transactional data, not on customer-facing storefront features.
 
 The admin app integrates three main backend pillars:
 
-- **Sanity (Headless CMS)** for catalog and content (products, categories, banners, grid items, etc.).
-- **PostgreSQL + Prisma** for transactional and account data (orders, carts, users, sessions, etc.).
-- **Cloudflare R2** for media storage, accessed through the **AWS S3 SDK**.
+| Service | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Content** | **Sanity (Headless CMS)** | Catalog management (Products, Categories, Banners). |
+| **Data** | **PostgreSQL + Prisma** | Transactional data (Orders, Users, Carts). |
+| **Storage** | **Cloudflare R2** | Media assets storage via AWS S3 SDK. |
 
 Modern Next.js features (**Server Actions**, **Route Handlers**, and **tRPC**) are used to implement type-safe data flows, form mutations, and REST-style APIs. **Clerk** secures the admin surface via middleware-based authentication.
 
 ---
 
-### 📚 **Table of Contents** 📚
+## 📚 Table of Contents 📚
 
-1. [System Architecture](#system-architecture)
-2. [Technology Stack](#technology-stack)
-3. [System Design](#system-design)
-4. [Development Methodology](#development-methodology)
-5. [System Attributes](#system-attributes)
-6. [System Review and Future Improvements](#system-review-and-future-improvements)
-
----
-
-### 🧰 **Technology Stack** 🧰
-
-**Framework & Language**
-
-- **Next.js 14** (App Router, `app/` directory)
-- **React** (Server Components + Client Components)
-- **TypeScript**
-
-**UI & Styling**
-
-- **Tailwind CSS**
-- **Radix UI / shadcn/ui** (headless UI primitives and components)
-
-**Backend & Data**
-
-- **Prisma** ORM
-- **PostgreSQL** (transactional database)
-- **Sanity** (Headless CMS for catalog/content)
-
-**APIs & Integration**
-
-- **tRPC** for type-safe internal APIs (e.g., admin dashboard stats, attribute queries)
-- **Next.js Route Handlers** (`app/api/.../route.ts`) for REST-style endpoints
-- **Next.js Server Actions** for form-driven mutations (Create/Update/Delete)
-
-**Auth & Identity**
-
-- **Clerk** for authentication and authorization on the admin side
-
-**Storage & Delivery**
-
-- **Cloudflare R2** for media/asset storage via **AWS S3 SDK**
-- **Sanity CDN** for delivery of Sanity-hosted images and static content
+1. [System Architecture](#system-architecture-current)
+2. [Technology Stack](#-technology-stack-)
+3. [System Design](#-system-design-)
+4. [Development Methodology](#-development-methodology-)
+5. [System Attributes](#-system-attributes-)
+6. [Deployment to Vercel](#-deployment-to-vercel-github-actions-)
+7. [System Review and Future Improvements](#-system-review-and-future-improvements-)
 
 ---
 
-### 🔧 **System Design** 🔧
+## 🧰 Technology Stack 🧰
+
+### Framework & Language
+*   **Next.js 14** (App Router, `app/` directory)
+*   **React** (Server Components + Client Components)
+*   **TypeScript**
+
+### UI & Styling
+*   **Tailwind CSS**
+*   **Radix UI / shadcn/ui** (headless UI primitives and components)
+
+### Backend & Data
+*   **Prisma** ORM
+*   **PostgreSQL** (transactional database)
+*   **Sanity** (Headless CMS for catalog/content)
+
+### APIs & Integration
+*   **tRPC** for type-safe internal APIs (e.g., admin dashboard stats, attribute queries)
+*   **Next.js Route Handlers** (`app/api/.../route.ts`) for REST-style endpoints
+*   **Next.js Server Actions** for form-driven mutations (Create/Update/Delete)
+
+### Auth & Identity
+*   **Clerk** for authentication and authorization on the admin side
+
+### Storage & Delivery
+*   **Cloudflare R2** for media/asset storage via **AWS S3 SDK**
+*   **Sanity CDN** for delivery of Sanity-hosted images and static content
+
+---
+
+## 🔧 System Design 🔧
 
 The Admin Panel is organized into clear, focused components that manage different parts of the e-commerce backend:
 
@@ -76,7 +78,7 @@ It uses Next.js App Router with a mix of **Server Components**, **Client Compone
 
 ---
 
-#### **Visual System Overview (Diagram Descriptions)**
+### Visual System Overview (Diagram Descriptions)
 
 For a visual understanding of the system, textual descriptions that can be rendered as diagrams (e.g. Mermaid.js) are available:
 
@@ -90,7 +92,7 @@ These describe:
 
 ---
 
-### 🧩 **Core Components**
+### 🧩 Core Components
 
 1. **Admin System** (Next.js 14 App Router)
 2. **Content Management** (Sanity CMS)
@@ -98,11 +100,11 @@ These describe:
 4. **Identity Service** (Clerk)
 5. **Media Storage** (Cloudflare R2, Sanity CDN)
 
-> ⚠️ There is **no customer-facing frontend** in this repository. The scope is strictly the admin/back-office interface.
+> ⚠️ **Note:** There is **no customer-facing frontend** in this repository. The scope is strictly the admin/back-office interface.
 
 ---
 
-#### **Admin System**
+### Admin System
 
 The **Admin System** provides tools for managing:
 
@@ -124,7 +126,7 @@ Key characteristics:
 
 ---
 
-### 🗂 **Content Management – Sanity (Headless CMS)**
+### 🗂 Content Management – Sanity (Headless CMS)
 
 **Sanity** is the **source of truth** for catalog/content data:
 
@@ -151,7 +153,7 @@ When convenient, Sanity’s **GraphQL API** is used for structured read operatio
 
 ---
 
-### 🗄 **Backend – PostgreSQL & Prisma**
+### 🗄 Backend – PostgreSQL & Prisma
 
 Transactional data is stored in **PostgreSQL** and accessed via **Prisma**. Typical models include:
 
@@ -176,7 +178,7 @@ This layer handles **operational data** (orders, carts, users, etc.) and complem
 
 ---
 
-### 🔐 **Identity Service – Clerk**
+### 🔐 Identity Service – Clerk
 
 **Clerk** manages authentication and authorization for the Admin Panel:
 
@@ -188,7 +190,7 @@ This ensures that product, order, and content management is restricted to author
 
 ---
 
-### 🌐 **Media Storage & Delivery**
+### 🌐 Media Storage & Delivery
 
 #### **Cloudflare R2 (via AWS S3 SDK)**
 
@@ -205,7 +207,7 @@ This ensures that product, order, and content management is restricted to author
 
 ---
 
-### 🧱 **Architecture Patterns**
+### 🧱 Architecture Patterns
 
 The Admin Panel follows well-known patterns to keep the codebase maintainable and scalable.
 
@@ -278,7 +280,7 @@ The Admin Panel uses a layered architecture:
 
 ---
 
-### 🔌 **Modern API Patterns (Admin Panel)**
+### 🔌 Modern API Patterns (Admin Panel)
 
 The Admin Panel uses several Next.js-native patterns:
 
@@ -300,7 +302,53 @@ For deeper discussion of these patterns and examples, see:
 
 ---
 
-### 🔨 **Development Methodology** 🔨
+## 🚀 Deployment to Vercel (GitHub Actions) 🚀
+
+Deployment is fully automated using GitHub Actions. Pushing to the `deploy` branch triggers the build and deploy pipeline.
+
+### ⚙️ Workflow Overview
+
+*   **File**: `.github/workflows/deploy-vercel.yml`
+*   **Trigger**: Push to `deploy` branch
+*   **Pipeline**: `Install` → `Build` → `Deploy (Vercel CLI)`
+
+### 🔑 Required Environment Variables
+
+Configure these in **Vercel Project Settings**. **Do not commit secrets.**
+
+| Category | Variable | Description |
+| :--- | :--- | :--- |
+| **Database** | `DATABASE_URL` | Prisma connection string. |
+| | `DIRECT_URL` | Direct connection for migrations. |
+| **Sanity** | `NEXT_PUBLIC_SANITY_DATASET` | Dataset name (e.g., `production`). |
+| | `NEXT_PUBLIC_SANITY_PROJECT_ID` | Sanity Project ID. |
+| | `SANITY_TOKEN` | API write token. |
+| **Storage (R2)** | `CLOUDFLARE_ACCESS_KEY_ID` | R2 Access Key. |
+| | `CLOUDFLARE_SECRET_ACCESS_KEY` | R2 Secret Key. |
+| | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Account ID. |
+| | `CLOUDFLARE_BUCKET_NAME` | R2 Bucket Name. |
+| | `CLOUDFLARE_PUBLIC_DOMAIN` | Public domain for assets. |
+| **Auth (Clerk)** | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk Public Key. |
+| | `CLERK_SECRET_KEY` | Clerk Secret Key. |
+| | `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | Sign-in URL path. |
+| | `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | Sign-up URL path. |
+| | `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` | Redirect after sign-in. |
+| | `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` | Redirect after sign-up. |
+
+### 🛠️ Setup Guide
+
+1.  **Vercel Project**: Create a new project in Vercel and link this repository.
+2.  **GitHub Secrets**: Add `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` to repo secrets.
+3.  **Environment Config**: Add the variables listed above to Vercel.
+4.  **Deploy**:
+    ```bash
+    git checkout -b deploy
+    git push origin deploy
+    ```
+
+---
+
+## 🔨 Development Methodology 🔨
 
 This section will be expanded over time.  
 At present, development focuses on:
@@ -314,7 +362,7 @@ At present, development focuses on:
 
 ---
 
-### 📈 **System Attributes** 📈
+## 📈 System Attributes 📈
 
 #### **Reliability**
 
@@ -333,7 +381,7 @@ At present, development focuses on:
 
 ---
 
-### 🔍 **System Review and Future Improvements** 🔍
+## 🔍 System Review and Future Improvements 🔍
 
 This section summarizes possible improvements for the Admin Panel. For details, see `enhancement.md`.
 
