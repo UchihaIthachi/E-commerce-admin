@@ -74,18 +74,16 @@ const EditBannerForm = ({ banner }: EditBannerFormProps) => {
         {/* Changed h4 to a more descriptive title if needed, or remove if page title is sufficient */}
         {/* <h4 className="text-lg font-semibold mb-4">Edit Banner Details</h4> */}
         <div className={"mt-4 flex flex-col gap-y-4"}>
-          <TextInput name={"name"} label={"Name"} control={form.control} />
+          <TextInput name={"name"} label={"Name"} />
           <ImagesInput
             constrain={1}
             name="desktop_image"
             label="Desktop Image" // Corrected label
-            control={form.control}
           />
           <ImagesInput
             constrain={1}
             name="mobile_image"
             label="Mobile Image" // Corrected label
-            control={form.control}
           />
         </div>
         <div className="my-6"> {/* Increased margin */}

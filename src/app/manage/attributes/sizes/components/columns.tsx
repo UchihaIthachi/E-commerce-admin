@@ -63,7 +63,7 @@ const SizeDeleteCellAction = ({ rowData }: { rowData: z.infer<typeof GetSizeDTO>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone. This will permanently delete the size
-            "{name}".
+            &quot;{name}&quot;.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

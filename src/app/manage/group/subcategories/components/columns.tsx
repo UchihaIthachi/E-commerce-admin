@@ -4,11 +4,11 @@ import ActionDropdown from "@/app/manage/components/table/action-dropdown";
 import DeleteAction from "@/app/manage/components/table/delete-action";
 import EditAction from "@/app/manage/components/table/edit-action";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { deleteSubCategory } from "@/lib/api/subcategory";
 import { GetCategoryDTO } from "@/server/application/common/dtos/category";
 import { ColumnDef } from "@tanstack/react-table";
 import { z } from "zod";
 import {GetSubCategoriesDTO} from "@/server/application/common/dtos/subcategory";
+import { deleteSubCategoryAction } from "../actions";
 
 export const columns: ColumnDef<z.infer<typeof GetSubCategoriesDTO>>[] = [
   {
@@ -41,12 +41,11 @@ export const columns: ColumnDef<z.infer<typeof GetSubCategoriesDTO>>[] = [
           <DropdownMenuItem>
             <EditAction href={`/manage/group/subcategories/${_id}/edit`} text="Edit" />
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-red-500">
+          <DropdownMenuItem className="text-red-500" onSelect={(e) => e.preventDefault()}>
             <DeleteAction
               _id={_id}
-              queryKey="SUBCATEGORY"
-              mutationFn={deleteSubCategory}
-              message="This subcategory is referenced by other documents"
+              action={deleteSubCategoryAction}
+              itemName={`subcategory "${row.original.name}"`}
             />
           </DropdownMenuItem>
         </ActionDropdown>

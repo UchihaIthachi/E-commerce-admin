@@ -46,7 +46,7 @@ export function DataTable<TData, TValue>({
   return (
     <div>
       {/* Safe console logging */}
-      {console.log("Table Row Model:", rowModel)}
+      {/* {console.log("Table Row Model:", rowModel)} */}
 
       <div className="flex items-center py-4">
         <Button onClick={() => router.push("/manage/group/categories/add")}>

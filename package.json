@@ -1,5 +1,5 @@
 {
-  "name": "kandy-selection-admin-v2",
+  "name": "E-commerce",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -33,6 +33,7 @@
     "@radix-ui/react-toast": "^1.1.4",
     "@sanity/client": "^6.4.9",
     "@tanstack/react-query": "^4.36.1",
+    "@tanstack/react-query-devtools": "^4.42.0",
     "@tanstack/react-table": "^8.9.8",
     "@trpc/client": "^10.45.2",
     "@trpc/next": "^10.45.2",

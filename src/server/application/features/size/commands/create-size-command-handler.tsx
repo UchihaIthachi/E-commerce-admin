@@ -16,5 +16,5 @@ export default async function createSizeCommandHandler(
   if (isDuplicate) {
     throw new ValidationError();
   }
-  await createSize({ ...command });
+  return await createSize({ ...command });
 }

@@ -20,7 +20,7 @@ export const adminBannerRouter = router({
     .input(z.object({ _id: z.string() }))
     .output(GetBannerDTO) // Ensure output validation
     .query(async ({ input }) => {
-      const banner = await getBannerQueryHandler(input._id);
+      const banner = await getBannerQueryHandler({ _id: input._id });
       // Handle case where banner might not be found if getBannerQueryHandler can return null/undefined
       if (!banner) {
         throw new Error('Banner not found'); // Or a specific tRPCError

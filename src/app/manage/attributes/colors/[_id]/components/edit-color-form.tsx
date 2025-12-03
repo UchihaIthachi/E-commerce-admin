@@ -81,11 +81,11 @@ function EditColorForm({ color }: EditColorFormProps) {
         >
           <h4 className="text-lg font-semibold mb-2">Edit Color</h4>
            <p className="text-sm text-muted-foreground mb-4">
-            Ensure color names are uppercase (e.g., BLACK) and hex codes are without the '#' symbol (e.g., 000000).
+            Ensure color names are uppercase (e.g., BLACK) and hex codes are without the &apos;#&apos; symbol (e.g., 000000).
           </p>
           <div className="mt-4 flex flex-col gap-y-4">
-            <TextInput control={form.control} name="name" placeholder="BLACK" label="Name" />
-            <TextInput control={form.control} name="hex" placeholder="000000" label="Hex Code" />
+            <TextInput name="name" placeholder="BLACK" label="Name" />
+            <TextInput name="hex" placeholder="000000" label="Hex Code" />
           </div>
           <div className="my-6"> {/* Increased margin */}
             <Button type="submit" disabled={updateColorMutation.isLoading}>
