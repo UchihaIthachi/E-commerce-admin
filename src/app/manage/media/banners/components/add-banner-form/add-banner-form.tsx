@@ -66,18 +66,16 @@ const AddBannerForm = () => {
       >
         <h4 className="text-lg font-semibold mb-4">Add New Banner</h4>
         <div className={"mt-4 flex flex-col gap-y-4"}>
-          <TextInput name={"name"} label={"Name"} control={form.control} />
+          <TextInput name={"name"} label={"Name"} />
           <ImagesInput
             constrain={1}
             name="desktop_image"
             label="Desktop Image"
-            control={form.control}
           />
           <ImagesInput
             constrain={1}
             name="mobile_image"
             label="Mobile Image"
-            control={form.control}
           />
         </div>
         <div className="my-6"> {/* Increased margin */}

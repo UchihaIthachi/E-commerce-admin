@@ -19,7 +19,7 @@ export const adminColorRouter = router({
     .input(z.object({ _id: z.string() }))
     .output(GetColorDTO)
     .query(async ({ input }) => {
-      const color = await getColorQueryHandler(input._id);
+      const color = await getColorQueryHandler({ _id: input._id });
       if (!color) {
         throw new Error('Color not found'); // Or a specific tRPCError
       }
@@ -57,7 +57,7 @@ export const adminColorRouter = router({
     .input(z.object({ _id: z.string() }))
     .output(z.object({ _id: z.string(), success: z.boolean() })) // Example output
     .mutation(async ({ input }) => {
-      await deleteColorCommandHandler(input._id); // Assuming this takes just id
+      await deleteColorCommandHandler({ _id: input._id }); // Assuming this takes just id
       return { _id: input._id, success: true };
     }),
 });

@@ -73,7 +73,7 @@ function EditSizeForm({ size }: EditSizeFormProps) {
              Make changes to the size name.
           </p> */}
           <div className="mt-4 flex flex-col gap-y-4">
-            <TextInput control={form.control} name="name" placeholder="e.g., S, M, L, UK 10" label="Size Name" />
+            <TextInput name="name" placeholder="e.g., S, M, L, UK 10" label="Size Name" />
           </div>
           <div className="my-6"> {/* Increased margin */}
             <Button type="submit" disabled={updateSizeMutation.isLoading}>

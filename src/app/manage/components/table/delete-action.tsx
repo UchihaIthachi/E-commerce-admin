@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast"; // Keep for potential client-side confirmations/errors
+// @ts-ignore
 import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
 import {

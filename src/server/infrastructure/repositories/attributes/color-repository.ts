@@ -27,7 +27,7 @@ type UpdateColorParams = {
     `;
   
     try {
-      const response = await graphqlClient.request(query);
+      const response: any = await graphqlClient.request(query);
   
       if (!response.allColor || response.allColor.length === 0) {
         console.warn("No colors found.");
@@ -56,7 +56,7 @@ type UpdateColorParams = {
   
     try {
       const variables = { id: _id };
-      const response = await graphqlClient.request(query, variables);
+      const response: any = await graphqlClient.request(query, variables);
   
       if (!response.Color) {
         throw new Error(`Color with ID "${_id}" not found.`);
@@ -82,6 +82,7 @@ export const createColor = async (params: CreateColorParams) => {
       hex,
     };
     await dynamicClient.create(doc);
+    return doc;
   };
 
 export const findColorByName = async (name: string) => {
@@ -93,6 +94,7 @@ export const findColorByName = async (name: string) => {
 export const updateColor = async (params: UpdateColorParams) => {
     const { _id, name, hex } = params;
     await dynamicClient.patch(params._id).set({ name, hex }).commit();
+    return { _id, name, hex };
   };
 
 export const deleteColor = async (_id: string) => {

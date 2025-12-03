@@ -7,7 +7,7 @@ import {DropdownMenuItem} from "@/components/ui/dropdown-menu";
 import {ColumnDef} from "@tanstack/react-table";
 import {z} from "zod";
 import {GetGridItemDTO} from "@/server/application/common/dtos/grid-item";
-import {deleteGridItem} from "@/lib/api/grid-item";
+import { deleteGridItemAction } from "../actions";
 
 export const columns: ColumnDef<z.infer<typeof GetGridItemDTO>>[] = [
     {
@@ -34,12 +34,12 @@ export const columns: ColumnDef<z.infer<typeof GetGridItemDTO>>[] = [
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         className="text-red-500"
+                        onSelect={(e) => e.preventDefault()}
                     >
                         <DeleteAction
                             _id={_id}
-                            queryKey="GRID_ITEM"
-                            mutationFn={deleteGridItem}
-                            message="This grid item is referenced by other documents"
+                            action={deleteGridItemAction}
+                            itemName={`grid item "${row.original.name}"`}
                         />
                     </DropdownMenuItem>
                 </ActionDropdown>

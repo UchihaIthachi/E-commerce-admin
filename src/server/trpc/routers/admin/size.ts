@@ -19,7 +19,7 @@ export const adminSizeRouter = router({
     .input(z.object({ _id: z.string() }))
     .output(GetSizeDTO)
     .query(async ({ input }) => {
-      const size = await getSizeQueryHandler(input._id); // Assuming handler takes id directly
+      const size = await getSizeQueryHandler({ _id: input._id }); // Assuming handler takes id directly
       if (!size) {
         throw new Error('Size not found'); // Or a specific tRPCError
       }
@@ -49,7 +49,7 @@ export const adminSizeRouter = router({
     .input(z.object({ _id: z.string() }))
     .output(z.object({ _id: z.string(), success: z.boolean() }))
     .mutation(async ({ input }) => {
-      await deleteSizeCommandHandler(input._id); // Assuming handler takes id directly
+      await deleteSizeCommandHandler({ _id: input._id }); // Assuming handler takes id directly
       return { _id: input._id, success: true };
     }),
 });

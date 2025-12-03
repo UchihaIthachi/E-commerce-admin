@@ -40,7 +40,7 @@ export const columns: ColumnDef<z.infer<typeof GetCategoriesDTO>>[] = [
           >
             <DeleteAction
               _id={_id}
-              action={deleteCategoryAction} // Pass the server action
+              action={deleteCategoryAction.bind(null, null)} // Pass the server action
               itemName={`category "${name}"`} // Pass item name
             />
           </DropdownMenuItem>

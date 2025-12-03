@@ -18,6 +18,6 @@ export default async function createColorCommandHandler(
     console.log("Hiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii");
     throw new ValidationError();
   }
-  await createColor({ ...command });
+  return await createColor({ ...command });
 }
 

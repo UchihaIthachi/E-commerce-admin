@@ -17,6 +17,7 @@ import ImagesInput from "@/app/manage/components/form/images-input";
 
 // Import Server Action and hooks from react-dom
 import { updateCategoryAction } from "../../actions"; // Adjust path if necessary
+// @ts-ignore
 import { useFormState, useFormStatus } from "react-dom";
 import { useEffect } from "react";
 
@@ -119,15 +120,14 @@ function EditCategoryForm({ category }: EditCategoryFormProps) {
 
           <h4>Basic Information</h4>
           <div className="mt-4 flex flex-col gap-y-4">
-            <TextInput control={form.control} name="name" placeholder="Women" label="Name" />
-            <TextInput control={form.control} name="slug" placeholder="women" label="Slug" />
+            <TextInput name="name" placeholder="Women" label="Name" />
+            <TextInput name="slug" placeholder="women" label="Slug" />
           </div>
           <div className="mt-8">
             <h4>SEO</h4>
             <div className="grid gap-y-2">
-              <TextInput control={form.control} name="seo.title" placeholder="" label="Title" />
+              <TextInput name="seo.title" placeholder="" label="Title" />
               <TextInput
-                control={form.control}
                 name="seo.description"
                 placeholder=""
                 label="Meta Description"

@@ -12,7 +12,7 @@ import ValidationError from "@/server/application/common/errors/validation-error
 
 // Helper to parse FormData, can be expanded
 async function parseAndValidate<T extends z.ZodTypeAny>(dto: T, formData: FormData): Promise<z.infer<T>> {
-  const objectData = Object.fromEntries(formData.entries());
+  const objectData: Record<string, any> = Object.fromEntries(formData.entries());
   // Basic handling for nested SEO object if not automatically parsed by fromEntries
   if (formData.has('seo.title') || formData.has('seo.description')) {
     objectData.seo = {
@@ -106,7 +106,7 @@ export async function deleteCategoryAction(
   }
 
   try {
-    await deleteCategoryCommandHandler(id); // Assuming handler takes just id
+    await deleteCategoryCommandHandler({ _id: id }); // Assuming handler takes just id
     revalidatePath("/manage/group/categories");
     // No redirect here, form/page should handle this (e.g. navigate away)
     // For useFormState, return success state
