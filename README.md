@@ -1,6 +1,6 @@
-# 🛒 E-Commerce Admin Panel 🛍️
+# 🛒 Maison Vella Panel 🛍️
 
-[![Deploy to Vercel](https://github.com/kandy-selection/admin-v2/actions/workflows/deploy-vercel.yml/badge.svg)](https://github.com/kandy-selection/admin-v2/actions/workflows/deploy-vercel.yml)
+[![Deploy to Vercel](https://github.com/UchihaIthachi/E-commerce-admin/actions/workflows/deploy-vercel.yml/badge.svg)](https://github.com/UchihaIthachi/E-commerce-admin/actions/workflows/deploy-vercel.yml)
 ![Next.js 14](https://img.shields.io/badge/Next.js%2014-App%20Router-black?style=flat-square&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.0+-38B2AC?style=flat-square&logo=tailwind-css)
@@ -8,15 +8,15 @@
 
 ## 🏢 System Architecture (Current) 🛠️
 
-The **E-Commerce Admin Panel** is a headless administration interface built with **Next.js 14 (App Router)** and **TypeScript**. It is focused entirely on **back-office management** of catalog and transactional data, not on customer-facing storefront features.
+The **Maison Vella Panel** is a headless administration interface built with **Next.js 14 (App Router)** and **TypeScript**. It is focused entirely on **back-office management** of catalog and transactional data, not on customer-facing storefront features.
 
 The admin app integrates three main backend pillars:
 
-| Service | Technology | Purpose |
-| :--- | :--- | :--- |
+| Service     | Technology                | Purpose                                             |
+| :---------- | :------------------------ | :-------------------------------------------------- |
 | **Content** | **Sanity (Headless CMS)** | Catalog management (Products, Categories, Banners). |
-| **Data** | **PostgreSQL + Prisma** | Transactional data (Orders, Users, Carts). |
-| **Storage** | **Cloudflare R2** | Media assets storage via AWS S3 SDK. |
+| **Data**    | **PostgreSQL + Prisma**   | Transactional data (Orders, Users, Carts).          |
+| **Storage** | **Cloudflare R2**         | Media assets storage via AWS S3 SDK.                |
 
 Modern Next.js features (**Server Actions**, **Route Handlers**, and **tRPC**) are used to implement type-safe data flows, form mutations, and REST-style APIs. **Clerk** secures the admin surface via middleware-based authentication.
 
@@ -37,30 +37,36 @@ Modern Next.js features (**Server Actions**, **Route Handlers**, and **tRPC**) a
 ## 🧰 Technology Stack 🧰
 
 ### Framework & Language
-*   **Next.js 14** (App Router, `app/` directory)
-*   **React** (Server Components + Client Components)
-*   **TypeScript**
+
+- **Next.js 14** (App Router, `app/` directory)
+- **React** (Server Components + Client Components)
+- **TypeScript**
 
 ### UI & Styling
-*   **Tailwind CSS**
-*   **Radix UI / shadcn/ui** (headless UI primitives and components)
+
+- **Tailwind CSS**
+- **Radix UI / shadcn/ui** (headless UI primitives and components)
 
 ### Backend & Data
-*   **Prisma** ORM
-*   **PostgreSQL** (transactional database)
-*   **Sanity** (Headless CMS for catalog/content)
+
+- **Prisma** ORM
+- **PostgreSQL** (transactional database)
+- **Sanity** (Headless CMS for catalog/content)
 
 ### APIs & Integration
-*   **tRPC** for type-safe internal APIs (e.g., admin dashboard stats, attribute queries)
-*   **Next.js Route Handlers** (`app/api/.../route.ts`) for REST-style endpoints
-*   **Next.js Server Actions** for form-driven mutations (Create/Update/Delete)
+
+- **tRPC** for type-safe internal APIs (e.g., admin dashboard stats, attribute queries)
+- **Next.js Route Handlers** (`app/api/.../route.ts`) for REST-style endpoints
+- **Next.js Server Actions** for form-driven mutations (Create/Update/Delete)
 
 ### Auth & Identity
-*   **Clerk** for authentication and authorization on the admin side
+
+- **Clerk** for authentication and authorization on the admin side
 
 ### Storage & Delivery
-*   **Cloudflare R2** for media/asset storage via **AWS S3 SDK**
-*   **Sanity CDN** for delivery of Sanity-hosted images and static content
+
+- **Cloudflare R2** for media/asset storage via **AWS S3 SDK**
+- **Sanity CDN** for delivery of Sanity-hosted images and static content
 
 ---
 
@@ -139,6 +145,7 @@ The Admin Panel reads and writes this data through Sanity’s APIs:
 
 - **Dynamic Client (non-CDN) access**  
   Used for managing dynamic entities where up-to-date content is required:
+
   - **category**
   - **subcategory**
   - **banner**
@@ -246,11 +253,13 @@ Separating reads and writes makes it easier to evolve each side independently.
 The Admin Panel uses a layered architecture:
 
 - **Frontend Layer**
+
   - Next.js 14 App Router, React, Tailwind, shadcn/ui
   - Renders pages, tables, and forms
   - Uses Client Components where interactivity is required
 
 - **Application / Business Logic Layer**
+
   - Command and Query handlers
   - Implements operations such as:
     - Category / subcategory / banner / grid item management
@@ -259,6 +268,7 @@ The Admin Panel uses a layered architecture:
   - Coordinates between UI and repositories
 
 - **Data Access Layer**
+
   - Concrete repositories for:
     - Sanity (content)
     - Prisma/PostgreSQL (transactions)
@@ -285,10 +295,12 @@ The Admin Panel uses a layered architecture:
 The Admin Panel uses several Next.js-native patterns:
 
 - **tRPC**
+
   - Provides type-safe APIs for internal admin use cases.
   - Particularly useful for dashboard data and structured admin queries.
 
 - **Next.js Server Actions**
+
   - Used for form submissions and mutations (e.g., creating/updating/deleting categories, subcategories, banners, grid items, colors, sizes).
   - Keep mutation logic on the server without extra client-side API boilerplate.
 
@@ -308,32 +320,32 @@ Deployment is fully automated using GitHub Actions. Pushing to the `deploy` bran
 
 ### ⚙️ Workflow Overview
 
-*   **File**: `.github/workflows/deploy-vercel.yml`
-*   **Trigger**: Push to `deploy` branch
-*   **Pipeline**: `Install` → `Build` → `Deploy (Vercel CLI)`
+- **File**: `.github/workflows/deploy-vercel.yml`
+- **Trigger**: Push to `deploy` branch
+- **Pipeline**: `Install` → `Build` → `Deploy (Vercel CLI)`
 
 ### 🔑 Required Environment Variables
 
 Configure these in **Vercel Project Settings**. **Do not commit secrets.**
 
-| Category | Variable | Description |
-| :--- | :--- | :--- |
-| **Database** | `DATABASE_URL` | Prisma connection string. |
-| | `DIRECT_URL` | Direct connection for migrations. |
-| **Sanity** | `NEXT_PUBLIC_SANITY_DATASET` | Dataset name (e.g., `production`). |
-| | `NEXT_PUBLIC_SANITY_PROJECT_ID` | Sanity Project ID. |
-| | `SANITY_TOKEN` | API write token. |
-| **Storage (R2)** | `CLOUDFLARE_ACCESS_KEY_ID` | R2 Access Key. |
-| | `CLOUDFLARE_SECRET_ACCESS_KEY` | R2 Secret Key. |
-| | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Account ID. |
-| | `CLOUDFLARE_BUCKET_NAME` | R2 Bucket Name. |
-| | `CLOUDFLARE_PUBLIC_DOMAIN` | Public domain for assets. |
-| **Auth (Clerk)** | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk Public Key. |
-| | `CLERK_SECRET_KEY` | Clerk Secret Key. |
-| | `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | Sign-in URL path. |
-| | `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | Sign-up URL path. |
-| | `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` | Redirect after sign-in. |
-| | `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` | Redirect after sign-up. |
+| Category         | Variable                              | Description                        |
+| :--------------- | :------------------------------------ | :--------------------------------- |
+| **Database**     | `DATABASE_URL`                        | Prisma connection string.          |
+|                  | `DIRECT_URL`                          | Direct connection for migrations.  |
+| **Sanity**       | `NEXT_PUBLIC_SANITY_DATASET`          | Dataset name (e.g., `production`). |
+|                  | `NEXT_PUBLIC_SANITY_PROJECT_ID`       | Sanity Project ID.                 |
+|                  | `SANITY_TOKEN`                        | API write token.                   |
+| **Storage (R2)** | `CLOUDFLARE_ACCESS_KEY_ID`            | R2 Access Key.                     |
+|                  | `CLOUDFLARE_SECRET_ACCESS_KEY`        | R2 Secret Key.                     |
+|                  | `CLOUDFLARE_ACCOUNT_ID`               | Cloudflare Account ID.             |
+|                  | `CLOUDFLARE_BUCKET_NAME`              | R2 Bucket Name.                    |
+|                  | `CLOUDFLARE_PUBLIC_DOMAIN`            | Public domain for assets.          |
+| **Auth (Clerk)** | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`   | Clerk Public Key.                  |
+|                  | `CLERK_SECRET_KEY`                    | Clerk Secret Key.                  |
+|                  | `NEXT_PUBLIC_CLERK_SIGN_IN_URL`       | Sign-in URL path.                  |
+|                  | `NEXT_PUBLIC_CLERK_SIGN_UP_URL`       | Sign-up URL path.                  |
+|                  | `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` | Redirect after sign-in.            |
+|                  | `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` | Redirect after sign-up.            |
 
 ### 🛠️ Setup Guide
 

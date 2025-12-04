@@ -1,6 +1,7 @@
 {
-  "name": "E-commerce",
+  "name": "maison-vella",
   "version": "0.1.0",
+  "description": "Maison Vella Admin Panel",
   "private": true,
   "scripts": {
     "dev": "next dev",
